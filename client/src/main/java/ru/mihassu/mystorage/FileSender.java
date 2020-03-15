@@ -51,34 +51,6 @@ public class FileSender {
                 }
             }
         }
-
-//        FileRegion region = new DefaultFileRegion(
-////                new FileInputStream(path.toFile()).getChannel(),
-////                0,
-////                Files.size(path));
-
-//        ByteBuf buf;
-//        //отправить длину имени файла
-//        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
-//        buf.writeInt(path.getFileName().toString().length());
-//        channel.writeAndFlush(buf);
-//
-//        //отправить имя файла
-//        byte[] fileName = path.getFileName().toString().getBytes(StandardCharsets.UTF_8);
-//        buf = ByteBufAllocator.DEFAULT.directBuffer(fileName.length);
-//        buf.writeBytes(fileName);
-//        channel.writeAndFlush(buf);
-//
-//        //отправить размер файла
-//        buf = ByteBufAllocator.DEFAULT.directBuffer(8);
-//        buf.writeLong(Files.size(path));
-//        channel.writeAndFlush(buf);
-//
-//        //отправить файл
-//        ChannelFuture channelFuture = channel.writeAndFlush(region);
-//        if (channelFutureListener != null) {
-//            channelFuture.addListener(channelFutureListener);
-//        }
     }
 
     private static void logIt(String logText) {
