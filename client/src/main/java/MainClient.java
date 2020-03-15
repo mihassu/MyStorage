@@ -1,51 +1,41 @@
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class MainClient {
+
+    private static Logger logger = Logger.getLogger(MainClient.class.getName());
+
     public static void main(String[] args) {
-        File fileClient = new File("client-storage/123.txt");
-        File fileServer;
 
-        try(FileInputStream finClient = new FileInputStream(fileClient);
-            RandomAccessFile out = new RandomAccessFile(new File("server-storage/stream.txt"), "rw");
-        ) {
-            //отправить в поток длину имени
-            out.writeInt(fileClient.getName().length());
-            //отправить в поток имя
-            out.writeChars(fileClient.getName());
+        final CountDownLatch networkStarter = new CountDownLatch(1);
+        new Thread(() -> Network.getInstance().start(networkStarter)).start();
+        try {
+            networkStarter.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
-            //как определить размер файла?
-
-            //отправить в поток содержимое
-            int b;
-            while (true) {
-                b = finClient.read();
-                if (b == -1) break;
-                out.writeByte(b);
-            }
-
-            //читаю из того же потока, пока без сервера
-            out.seek(0);
-            //Прочитать длину имени
-            int len = out.readInt();
-            //Прочитать имя файла
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < len; i++) {
-                sb.append(out.readChar());
-            }
-            //создать файл
-            fileServer = new File("server-storage/" + sb);
-
-            //записать содержимое файла
-            RandomAccessFile in = new RandomAccessFile(fileServer, "rw");
-            int biteIn;
-            while (true) {
-                biteIn = out.read();
-                if (biteIn == -1) break;
-                in.writeByte(biteIn);
-            }
-
+        Path path = Paths.get("client-storage/123.txt");
+        try {
+            FileSender.sendFile(path, Network.getInstance().getChannel(), channelFuture -> {
+                if (channelFuture.isSuccess()) {
+                    logIt("Файл передан");
+                } else {
+                    channelFuture.cause().printStackTrace();
+                }
+            });
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void logIt(String logText) {
+        logger.log(Level.SEVERE, logText);
     }
 }
