@@ -1,3 +1,5 @@
+package ru.mihassu.mystorage;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -7,12 +9,23 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Network {
 
     private static Network instance = new Network();
+    private static Logger logger = Logger.getLogger(Network.class.getName());
+    private CallBack callOnFileSent;
+
+    public void setCallOnFileSent(CallBack callOnFileSent) {
+        this.callOnFileSent = callOnFileSent;
+    }
 
     public static Network getInstance() {
         return instance;
@@ -55,7 +68,27 @@ public class Network {
         }
     }
 
+    public void sendFile(Path path) {
+        try {
+            FileSender.sendFile(path, channel, channelFuture -> {
+                if (channelFuture.isSuccess()) {
+                    logIt("Файл передан");
+                    callOnFileSent.refreshList();
+                } else {
+                    channelFuture.cause().printStackTrace();
+                }
+            });
+        } catch (IOException e) {
+            logIt("Ошибка при передаче файла");
+            e.printStackTrace();
+        }
+    }
+
     public void stop() {
         channel.close();
+    }
+
+    private static void logIt(String logText) {
+        logger.log(Level.SEVERE, logText);
     }
 }

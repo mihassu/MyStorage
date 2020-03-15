@@ -1,3 +1,5 @@
+package ru.mihassu.mystorage;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
@@ -19,7 +21,7 @@ public class FileSender {
                 0,
                 Files.size(path));
 
-        ByteBuf buf = null;
+        ByteBuf buf;
 
         //отправить длину имени файла
         buf = ByteBufAllocator.DEFAULT.directBuffer(4);
@@ -37,6 +39,7 @@ public class FileSender {
         buf.writeLong(Files.size(path));
         channel.writeAndFlush(buf);
 
+        //отправить файл
         ChannelFuture channelFuture = channel.writeAndFlush(region);
         if (channelFutureListener != null) {
             channelFuture.addListener(channelFutureListener);
