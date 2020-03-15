@@ -1,11 +1,18 @@
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class MyHandler extends ChannelInboundHandlerAdapter {
 
@@ -29,7 +36,7 @@ public class MyHandler extends ChannelInboundHandlerAdapter {
         if (buf.readableBytes() >= fileNameLength) {
             byte[] fileName = new byte[fileNameLength];
             buf.readBytes(fileName);
-            fileServer = new File("server-storage/" + new String(fileName, "UTF-8"));
+            fileServer = new File("server-storage/" + new String(fileName, StandardCharsets.UTF_8));
             out = new BufferedOutputStream(new FileOutputStream(fileServer));
         }
 
@@ -52,6 +59,9 @@ public class MyHandler extends ChannelInboundHandlerAdapter {
             buf.release();
             System.out.println("buf.release()");
         }
+
+        List<String> filesServer = getFilesList();
+
     }
 
 
@@ -59,5 +69,19 @@ public class MyHandler extends ChannelInboundHandlerAdapter {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         cause.printStackTrace();
         ctx.close();
+    }
+
+    private List<String> getFilesList() {
+        List<String> files = new ArrayList<>();
+        try {
+            files = Files.list(Paths.get("server-storage/"))
+                    .map(Path::toFile)
+                    .map(File::getName)
+                    .collect(Collectors.toList());
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return files;
     }
 }

@@ -10,8 +10,10 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
@@ -31,61 +33,86 @@ public class Network {
         return instance;
     }
 
-    private Channel channel;
-
-    public Channel getChannel() {
-        return channel;
-    }
+//    private Channel channel;
+    private Socket socket;
+    private DataOutputStream out;
+    private DataInputStream in;
 
     public void start(CountDownLatch countDownLatch) {
 
-        EventLoopGroup group = new NioEventLoopGroup();
         try {
-            ChannelFuture channelFuture = new Bootstrap()
-                    .group(group)
-                    .channel(NioSocketChannel.class)
-                    .remoteAddress(new InetSocketAddress("localhost", 8189))
-                    .handler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel socketChannel) throws Exception {
-                            socketChannel.pipeline().addLast();
-                            channel = socketChannel;
-                        }
-                    })
-                    .connect()
-                    .sync();
+            socket = new Socket("localhost", 8189);
+            out = new DataOutputStream(socket.getOutputStream());
+            in = new DataInputStream(socket.getInputStream());
             countDownLatch.countDown();
-            channelFuture.channel().closeFuture().sync();
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                group.shutdownGracefully().sync();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            stop();
         }
+
+//        EventLoopGroup group = new NioEventLoopGroup();
+//        try {
+//            ChannelFuture channelFuture = new Bootstrap()
+//                    .group(group)
+//                    .channel(NioSocketChannel.class)
+//                    .remoteAddress(new InetSocketAddress("localhost", 8189))
+//                    .handler(new ChannelInitializer<SocketChannel>() {
+//                        @Override
+//                        protected void initChannel(SocketChannel socketChannel) throws Exception {
+//                            socketChannel.pipeline().addLast();
+//                            channel = socketChannel;
+//                        }
+//                    })
+//                    .connect()
+//                    .sync();
+//            countDownLatch.countDown();
+//            channelFuture.channel().closeFuture().sync();
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        } finally {
+//            try {
+//                group.shutdownGracefully().sync();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
     }
 
     public void sendFile(Path path) {
         try {
-            FileSender.sendFile(path, channel, channelFuture -> {
+            FileSender.sendFile(path, out, channelFuture -> {
                 if (channelFuture.isSuccess()) {
-                    logIt("Файл передан");
+                    logIt("Файл отправлен");
                     callOnFileSent.refreshList();
                 } else {
                     channelFuture.cause().printStackTrace();
                 }
             });
         } catch (IOException e) {
-            logIt("Ошибка при передаче файла");
+            logIt("Ошибка при отправке файла");
             e.printStackTrace();
         }
     }
 
     public void stop() {
-        channel.close();
+        try {
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            in.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+//        channel.close();
     }
 
     private static void logIt(String logText) {
