@@ -59,6 +59,8 @@ public class MyHandler extends ChannelInboundHandlerAdapter {
             buf.release();
             System.out.println("buf.release()");
         }
+
+        ctx.writeAndFlush(5);
     }
 
 
