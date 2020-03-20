@@ -1,4 +1,5 @@
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
@@ -14,13 +15,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class MyHandler extends ChannelInboundHandlerAdapter {
+public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
     private BufferedOutputStream out;
     private File fileServer;
     private int fileNameLength;
     private long fileSize;
     private long receivedFileSize;
+
+    private int serverFilesCount;
+    private int serverFileLength;
+
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -60,7 +65,28 @@ public class MyHandler extends ChannelInboundHandlerAdapter {
             System.out.println("buf.release()");
         }
 
-        ctx.writeAndFlush(5);
+        List<byte[]> severFiles = getFilesList();
+        serverFilesCount = severFiles.size();
+        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+        buf.writeInt(serverFilesCount);
+        ctx.channel().writeAndFlush(buf); //int количество файлов
+
+        for (int i = 0; i < serverFilesCount; i++) {
+            serverFileLength = severFiles.get(i).length;
+            buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+            ctx.channel().writeAndFlush(buf);
+
+            buf = ByteBufAllocator.DEFAULT.directBuffer(serverFileLength);
+            buf.writeBytes(severFiles.get(i));
+            ctx.channel().writeAndFlush(buf);
+        }
+        severFiles.forEach(bytes -> {
+            ByteBuf bufOut;
+            bufOut = ByteBufAllocator.DEFAULT.directBuffer(bytes.length);
+            ctx.writeAndFlush(bytes.length); //int длина имени файла
+            ctx.writeAndFlush(bytes); //byte имя файла
+            System.out.println(bytes);
+        });
     }
 
 
@@ -70,12 +96,13 @@ public class MyHandler extends ChannelInboundHandlerAdapter {
         ctx.close();
     }
 
-    private List<String> getFilesList() {
-        List<String> files = new ArrayList<>();
+    private List<byte[]> getFilesList() {
+        List<byte[]> files = new ArrayList<>();
         try {
             files = Files.list(Paths.get("server-storage/"))
                     .map(Path::toFile)
                     .map(File::getName)
+                    .map(s -> s.getBytes(StandardCharsets.UTF_8))
                     .collect(Collectors.toList());
 
         } catch (IOException e) {

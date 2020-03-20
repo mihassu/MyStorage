@@ -46,6 +46,21 @@ public class MainController implements Initializable {
         }
         refreshFilesList(clientFilesList, "client-storage");
         refreshFilesList(serverFilesList, "server-storage");
+
+//        Thread read = new Thread(() -> {
+//            try {
+//                while (true) {
+//                    int i = NetworkIO.getInstance().readServerFiles();
+//                    System.out.println(i);
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            } finally {
+//                NetworkIO.getInstance().stop();
+//            }
+//        });
+//        read.setDaemon(true);
+//        read.start();
     }
 
 
@@ -64,6 +79,7 @@ public class MainController implements Initializable {
     }
 
     public void onPressDisconnectBtn(ActionEvent actionEvent) {
+//        NetworkIO.getInstance().stop();
         Network.getInstance().stop();
     }
 

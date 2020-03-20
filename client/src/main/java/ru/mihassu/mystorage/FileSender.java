@@ -20,36 +20,36 @@ public class FileSender {
     private static Logger logger = Logger.getLogger(FileSender.class.getName());
 
     public static void sendFile(Path path,
-                                DataOutputStream out,
+                                Channel channel,
                                 ChannelFutureListener channelFutureListener) throws IOException {
 
-        long fileSize = Files.size(path);
+        FileRegion region = new DefaultFileRegion(
+                new FileInputStream(path.toFile()).getChannel(),
+                0,
+                Files.size(path));
+
+        ByteBuf buf;
 
         //отправить длину имени файла
-        out.writeInt(path.getFileName().toString().length());
-        out.flush();
+        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+        buf.writeInt(path.getFileName().toString().length());
+        channel.writeAndFlush(buf);
 
         //отправить имя файла
         byte[] fileName = path.getFileName().toString().getBytes(StandardCharsets.UTF_8);
-        out.write(fileName);
-        out.flush();
+        buf = ByteBufAllocator.DEFAULT.directBuffer(fileName.length);
+        buf.writeBytes(fileName);
+        channel.writeAndFlush(buf);
 
         //отправить размер файла
-        out.writeLong(fileSize);
-        out.flush();
+        buf = ByteBufAllocator.DEFAULT.directBuffer(8);
+        buf.writeLong(Files.size(path));
+        channel.writeAndFlush(buf);
 
         //отправить файл
-        File file = new File(path.toString());
-        try (FileInputStream fileInputStream = new FileInputStream(file)) {
-            long byteCount = 0L;
-            while (true) {
-                out.writeByte(fileInputStream.read());
-                byteCount++;
-                if (byteCount == fileSize) {
-                    logIt("Отправлен файл: " + path.toString());
-                    break;
-                }
-            }
+        ChannelFuture channelFuture = channel.writeAndFlush(region);
+        if (channelFutureListener != null) {
+            channelFuture.addListener(channelFutureListener);
         }
     }
 
