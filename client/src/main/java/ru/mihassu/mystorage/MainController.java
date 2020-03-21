@@ -1,16 +1,20 @@
 package ru.mihassu.mystorage;
 
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ListView;
+import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.control.TextField;
 
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
@@ -21,7 +25,7 @@ public class MainController implements Initializable {
     private static Logger logger = Logger.getLogger(MainController.class.getName());
 
     @FXML
-    TextField tfFileName;
+    TextField taFileName;
 
     @FXML
     ListView<String> clientFilesList;
@@ -31,9 +35,9 @@ public class MainController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        Network.getInstance().setCallOnFileSent(() -> {
-            refreshFilesList(clientFilesList, "client-storage");
-            refreshFilesList(serverFilesList, "server-storage");
+        Network.getInstance().setCallOnFileSent((filesNames) -> {
+            refreshClientList(clientFilesList, "client-storage");
+            refreshServerList(filesNames);
             logIt("Callback - refresh");
         });
 
@@ -44,8 +48,17 @@ public class MainController implements Initializable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        refreshFilesList(clientFilesList, "client-storage");
-        refreshFilesList(serverFilesList, "server-storage");
+        refreshClientList(clientFilesList, "client-storage");
+
+        MultipleSelectionModel<String> clientSelectionModel = clientFilesList.getSelectionModel();
+        clientSelectionModel.selectedItemProperty().addListener(new ChangeListener<String>() {
+            @Override
+            public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
+                taFileName.setText(newValue);
+            }
+        });
+
+
 
 //        Thread read = new Thread(() -> {
 //            try {
@@ -63,8 +76,17 @@ public class MainController implements Initializable {
 //        read.start();
     }
 
+    private void refreshServerList(List<String> filesNames) {
+        Platform.runLater(() -> {
+            serverFilesList.getItems().clear();
+            for (String f: filesNames) {
+                serverFilesList.getItems().add(f);
+            }
+        });
 
-    private void refreshFilesList(ListView<String> filesList, String dir) {
+    }
+
+    private void refreshClientList(ListView<String> filesList, String dir) {
         Platform.runLater(() -> {
             try {
                 filesList.getItems().clear();
@@ -78,21 +100,11 @@ public class MainController implements Initializable {
         });
     }
 
-    public void onPressDisconnectBtn(ActionEvent actionEvent) {
-//        NetworkIO.getInstance().stop();
-        Network.getInstance().stop();
-    }
-
     public void onPressUploadBtn(ActionEvent actionEvent) {
-        if (tfFileName.getLength() > 0) {
-            Network.getInstance().sendFile(Paths.get("client-storage/" + tfFileName.getText()));
-            tfFileName.clear();
+        if (taFileName.getLength() > 0) {
+            Network.getInstance().sendFile(Paths.get("client-storage/" + taFileName.getText()));
+            taFileName.clear();
         }
-    }
-
-    public void onPressRefreshBtn(ActionEvent actionEvent) {
-        refreshFilesList(clientFilesList, "client-storage");
-        refreshFilesList(serverFilesList, "server-storage");
     }
 
     private void updateUI(Runnable r) {

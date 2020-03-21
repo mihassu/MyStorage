@@ -54,7 +54,7 @@ public class Network {
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
-                            socketChannel.pipeline().addLast(new ClientFileReceiverHandler());
+                            socketChannel.pipeline().addLast(new ClientFileReceiverHandler(callOnFileSent));
                             channel = socketChannel;
                         }
                     })
@@ -79,7 +79,6 @@ public class Network {
             FileSender.sendFile(path, channel, channelFuture -> {
                 if (channelFuture.isSuccess()) {
                     logIt("Файл отправлен");
-                    callOnFileSent.refreshList();
                 } else {
                     channelFuture.cause().printStackTrace();
                 }
