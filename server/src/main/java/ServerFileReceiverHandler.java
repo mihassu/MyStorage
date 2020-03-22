@@ -14,13 +14,14 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import ru.mihassu.mystorage.common.Constants;
 import ru.mihassu.mystorage.common.State;
 
 
 public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
     private State currentState = State.IDLE;
-    public static final byte TEST_BYTE = 13;
     private BufferedOutputStream out;
     private File fileServer;
     private int fileNameLength;
@@ -47,10 +48,14 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             if (currentState == State.IDLE) {
                 byte testByte = buf.readByte();
                 System.out.println("ServerFileReceiverHandler - testByte: " + testByte);
-                if (testByte == TEST_BYTE) {
+                if (testByte == Constants.LOAD_FILE) {
                     currentState = State.NAME_LENGTH;
                     receivedFileSize = 0L;
-                } else {
+
+                } else if (testByte == Constants.REQUEST_FILES_LIST) {
+                    currentState = State.REQUEST_FILES_LIST;
+
+                }   else {
                     System.out.println("ERROR: Invalid first byte - " + testByte);
                     break;
                 }
@@ -72,13 +77,13 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     buf.readBytes(fileName);
                     fileServer = new File("server-storage/" + new String(fileName, StandardCharsets.UTF_8));
                     out = new BufferedOutputStream(new FileOutputStream(fileServer));
-                    currentState = State.FILE_LENGTH;
+                    currentState = State.FILE_SIZE;
                     System.out.println("ServerFileReceiverHandler - fileServer: " + fileServer.getName());
                 }
             }
 
             //прочитать размер файла
-            if (currentState == State.FILE_LENGTH) {
+            if (currentState == State.FILE_SIZE) {
                 System.out.println("ServerFileReceiverHandler - State.FILE_LENGTH. readableBytes: " + buf.readableBytes());
                 if (buf.readableBytes() >= 8) {
                     fileSize = buf.readLong();
@@ -102,6 +107,12 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     }
                 }
             }
+
+            //отправить список файлов на сервере
+            if (currentState == State.REQUEST_FILES_LIST) {
+                sendServerFilesList(ctx, buf);
+                currentState = State.IDLE;
+            }
         }
 
         if (buf.readableBytes() == 0) {
@@ -117,6 +128,11 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         List<byte[]> severFiles = getFilesList();
         serverFilesCount = severFiles.size();
         System.out.println("serverFilesCount: " + serverFilesCount);
+
+        //отправить контрольный байт
+        outBuf = ByteBufAllocator.DEFAULT.directBuffer(1);
+        outBuf.writeByte(Constants.REQUEST_FILES_LIST);
+        ctx.channel().writeAndFlush(outBuf);
 
         //отправить количество файлов
         outBuf = ByteBufAllocator.DEFAULT.directBuffer(4);

@@ -1,6 +1,8 @@
 package ru.mihassu.mystorage;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -13,6 +15,7 @@ import io.netty.handler.codec.bytes.ByteArrayDecoder;
 import io.netty.handler.codec.bytes.ByteArrayEncoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
+import ru.mihassu.mystorage.common.Constants;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -87,6 +90,13 @@ public class Network {
             logIt("Ошибка при отправке файла");
             e.printStackTrace();
         }
+    }
+
+
+    public void getServerFiles() {
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(1);
+        buf.writeByte(Constants.REQUEST_FILES_LIST);
+        channel.writeAndFlush(buf);
     }
 
     public void stop() {

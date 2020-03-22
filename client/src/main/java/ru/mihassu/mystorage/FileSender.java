@@ -3,6 +3,7 @@ package ru.mihassu.mystorage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
+import ru.mihassu.mystorage.common.Constants;
 
 import java.io.DataOutputStream;
 import java.io.File;
@@ -18,7 +19,6 @@ import java.util.logging.Logger;
 public class FileSender {
 
     private static Logger logger = Logger.getLogger(FileSender.class.getName());
-    public static final byte TEST_BYTE = 13;
 
     public static void sendFile(Path path,
                                 Channel channel,
@@ -33,7 +33,7 @@ public class FileSender {
 
         //отправить контольный байт
         buf = ByteBufAllocator.DEFAULT.directBuffer(1);
-        buf.writeByte(TEST_BYTE);
+        buf.writeByte(Constants.LOAD_FILE);
         channel.writeAndFlush(buf);
 
         //отправить длину имени файла

@@ -48,7 +48,9 @@ public class MainController implements Initializable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
         refreshClientList(clientFilesList, "client-storage");
+        Network.getInstance().getServerFiles();
 
         MultipleSelectionModel<String> clientSelectionModel = clientFilesList.getSelectionModel();
         clientSelectionModel.selectedItemProperty().addListener(new ChangeListener<String>() {
