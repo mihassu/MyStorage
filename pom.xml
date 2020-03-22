@@ -11,12 +11,21 @@
     <modules>
         <module>client</module>
         <module>server</module>
+        <module>common</module>
     </modules>
 
     <properties>
         <maven.complier.source>1.8</maven.complier.source>
         <maven.complier.target>1.8</maven.complier.target>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.42.Final</version>
+        </dependency>
+    </dependencies>
 
 
 </project>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox fx:id="rootNode" alignment="CENTER" prefHeight="400.0" prefWidth="600.0" style="-fx-background-color: linear-gradient(#fff 0%, #eee 10%, #ddd 90%, #bbb 100%);" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.mihassu.mystorage.MainController">
+    <TextField fx:id="fileNameField" focusTraversable="false" alignment="CENTER" editable="false"/>
+
+    <HBox>
+        <ListView fx:id="clientFilesList" VBox.vgrow="ALWAYS" />
+
+        <VBox alignment="TOP_CENTER" HBox.hgrow="ALWAYS">
+            <Button onAction="#onPressUploadBtn" text="Загрузить на сервер" />
+            <Button onAction="#onPressDownloadBtn" text="Скачать с сервера" />
+        </VBox>
+
+        <ListView fx:id="serverFilesList" VBox.vgrow="ALWAYS" />
+    </HBox>
+</VBox>
