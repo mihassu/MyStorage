@@ -6,11 +6,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.LineBasedFrameDecoder;
-import io.netty.handler.codec.bytes.ByteArrayDecoder;
-import io.netty.handler.codec.bytes.ByteArrayEncoder;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
+import io.netty.handler.codec.serialization.ObjectDecoder;
 
 public class Server {
 
@@ -28,7 +24,10 @@ public class Server {
                     .channel(NioServerSocketChannel.class)
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
-                            socketChannel.pipeline().addLast(new ServerFileReceiverHandler());
+                            socketChannel.pipeline().addLast(
+                                    new ServerFileReceiverHandler(),
+                                    new ObjectDecoder(1024 * 1024, null),
+                                    new ServerFileSenderHandler());
                         }
                     })
                     .childOption(ChannelOption.SO_KEEPALIVE, true)

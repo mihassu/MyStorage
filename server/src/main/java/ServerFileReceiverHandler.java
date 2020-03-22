@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,8 +28,6 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private int fileNameLength;
     private long fileSize;
     private long receivedFileSize;
-    private boolean isFileReceived = false;
-
     private int serverFilesCount;
     private int serverFileLength;
 
@@ -38,30 +37,45 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         ByteBuf buf = ((ByteBuf) msg);
         System.out.println("ServerFileReceiverHandler - readableBytes: " + buf.readableBytes());
 
-//        if (isFileReceived) {
-//            ctx.pipeline().fireChannelActive();
-//            isFileReceived = false;
-//            return;
-//        }
-
         while (buf.readableBytes() > 0) {
             if (currentState == State.IDLE) {
                 byte testByte = buf.readByte();
                 System.out.println("ServerFileReceiverHandler - testByte: " + testByte);
-                if (testByte == Constants.LOAD_FILE) {
+                if (testByte == Constants.UPLOAD_FILE) {
                     currentState = State.NAME_LENGTH;
                     receivedFileSize = 0L;
+
+                } else if (testByte == Constants.DOWNLOAD_FILE) {
+                    currentState = State.DOWNLOAD_NAME_LENGTH;
 
                 } else if (testByte == Constants.REQUEST_FILES_LIST) {
                     currentState = State.REQUEST_FILES_LIST;
 
-                }   else {
+                } else {
                     System.out.println("ERROR: Invalid first byte - " + testByte);
                     break;
                 }
             }
 
-            //прочитать длину имени файла
+            //прочитать длину имени файла для скачивания с сервера
+            if (currentState == State.DOWNLOAD_NAME_LENGTH) {
+                if (buf.readableBytes() >= 4) {
+                    fileNameLength = buf.readInt();
+                    currentState = State.DOWNLOAD_NAME;
+                }
+            }
+
+            //прочитать имя файла для скачивания с сервера и передать в следующий хендлер
+            if (currentState == State.DOWNLOAD_NAME) {
+                if (buf.readableBytes() >= fileNameLength) {
+                    byte[] fileName = new byte[fileNameLength];
+                    buf.readBytes(fileName);
+                    ctx.fireChannelRead(new String(fileName, StandardCharsets.UTF_8));
+                    currentState = State.IDLE;
+                }
+            }
+
+            //прочитать длину имени файла для загрузки на сервер
             if (currentState == State.NAME_LENGTH) {
                 if (buf.readableBytes() >= 4) {
                     fileNameLength = buf.readInt();
@@ -70,7 +84,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                 }
             }
 
-            //прочитать имя файла и создать файл
+            //прочитать имя файла и создать пустой файл на сервере
             if (currentState == State.NAME) {
                 if (buf.readableBytes() >= fileNameLength) {
                     byte[] fileName = new byte[fileNameLength];
@@ -101,8 +115,6 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                         currentState = State.IDLE;
                         out.close();
                         sendServerFilesList(ctx, buf);
-//                        isFileReceived = true;
-//                        ctx.pipeline().addLast(new ServerFileSenderHandler());
                         break;
                     }
                 }
@@ -156,7 +168,6 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         cause.printStackTrace();
@@ -177,5 +188,4 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         }
         return files;
     }
-
 }

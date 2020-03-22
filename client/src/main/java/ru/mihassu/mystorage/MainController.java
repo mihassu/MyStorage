@@ -8,6 +8,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MultipleSelectionModel;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 
 import java.io.IOException;
@@ -25,7 +26,7 @@ public class MainController implements Initializable {
     private static Logger logger = Logger.getLogger(MainController.class.getName());
 
     @FXML
-    TextField taFileName;
+    TextField fileNameField;
 
     @FXML
     ListView<String> clientFilesList;
@@ -49,34 +50,14 @@ public class MainController implements Initializable {
             e.printStackTrace();
         }
 
+        //обновить списки на сервере и на клиенте
         refreshClientList(clientFilesList, "client-storage");
         Network.getInstance().getServerFiles();
 
-        MultipleSelectionModel<String> clientSelectionModel = clientFilesList.getSelectionModel();
-        clientSelectionModel.selectedItemProperty().addListener(new ChangeListener<String>() {
-            @Override
-            public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
-                taFileName.setText(newValue);
-            }
-        });
-
-
-
-//        Thread read = new Thread(() -> {
-//            try {
-//                while (true) {
-//                    int i = NetworkIO.getInstance().readServerFiles();
-//                    System.out.println(i);
-//                }
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            } finally {
-//                NetworkIO.getInstance().stop();
-//            }
-//        });
-//        read.setDaemon(true);
-//        read.start();
+        initItemsSelectedListeners();
     }
+
+
 
     private void refreshServerList(List<String> filesNames) {
         Platform.runLater(() -> {
@@ -85,7 +66,6 @@ public class MainController implements Initializable {
                 serverFilesList.getItems().add(f);
             }
         });
-
     }
 
     private void refreshClientList(ListView<String> filesList, String dir) {
@@ -103,10 +83,26 @@ public class MainController implements Initializable {
     }
 
     public void onPressUploadBtn(ActionEvent actionEvent) {
-        if (taFileName.getLength() > 0) {
-            Network.getInstance().sendFile(Paths.get("client-storage/" + taFileName.getText()));
-            taFileName.clear();
+        if (fileNameField.getLength() > 0) {
+            Network.getInstance().sendFile(Paths.get("client-storage/" + fileNameField.getText()));
+            fileNameField.clear();
         }
+    }
+
+    public void onPressDownloadBtn(ActionEvent actionEvent) {
+        Network.getInstance().downloadFile(fileNameField.getText());
+    }
+
+    private void initItemsSelectedListeners() {
+        MultipleSelectionModel<String> clientSelectionModel = clientFilesList.getSelectionModel();
+        clientSelectionModel
+                .selectedItemProperty()
+                .addListener((observable, oldValue, newValue) -> fileNameField.setText(newValue));
+
+        MultipleSelectionModel<String> serverSelectionModel = serverFilesList.getSelectionModel();
+        serverSelectionModel
+                .selectedItemProperty()
+                .addListener((observable, oldValue, newValue) -> fileNameField.setText(newValue));
     }
 
     private void updateUI(Runnable r) {
@@ -120,4 +116,6 @@ public class MainController implements Initializable {
     private static void logIt(String logText) {
         logger.log(Level.SEVERE, logText);
     }
+
+
 }

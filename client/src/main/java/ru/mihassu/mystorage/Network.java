@@ -10,18 +10,12 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.LineBasedFrameDecoder;
-import io.netty.handler.codec.bytes.ByteArrayDecoder;
-import io.netty.handler.codec.bytes.ByteArrayEncoder;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
 import ru.mihassu.mystorage.common.Constants;
+import ru.mihassu.mystorage.common.FileSender;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
@@ -32,19 +26,15 @@ public class Network {
     private static Network instance = new Network();
     private static Logger logger = Logger.getLogger(Network.class.getName());
     private CallBack callOnFileSent;
-
-    public void setCallOnFileSent(CallBack callOnFileSent) {
-        this.callOnFileSent = callOnFileSent;
-    }
+    private Channel channel;
 
     public static Network getInstance() {
         return instance;
     }
 
-    private Channel channel;
-//    private Socket socket;
-//    private DataOutputStream out;
-//    private DataInputStream in;
+    public void setCallOnFileSent(CallBack callOnFileSent) {
+        this.callOnFileSent = callOnFileSent;
+    }
 
     public void start(CountDownLatch countDownLatch) {
 
@@ -90,6 +80,25 @@ public class Network {
             logIt("Ошибка при отправке файла");
             e.printStackTrace();
         }
+    }
+
+    public void downloadFile(String name) {
+        ByteBuf buf;
+        //отправить контольный байт
+        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
+        buf.writeByte(Constants.DOWNLOAD_FILE);
+        channel.writeAndFlush(buf);
+
+        //отправить длину имени файла
+        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+        buf.writeInt(name.length());
+        channel.writeAndFlush(buf);
+
+        //отправить имя файла
+        byte[] fileName = name.getBytes(StandardCharsets.UTF_8);
+        buf = ByteBufAllocator.DEFAULT.directBuffer(name.length());
+        buf.writeBytes(fileName);
+        channel.writeAndFlush(buf);
     }
 
 

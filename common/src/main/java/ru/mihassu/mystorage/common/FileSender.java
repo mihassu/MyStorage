@@ -1,18 +1,14 @@
-package ru.mihassu.mystorage;
+package ru.mihassu.mystorage.common;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
-import ru.mihassu.mystorage.common.Constants;
 
-import java.io.DataOutputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,7 +29,7 @@ public class FileSender {
 
         //отправить контольный байт
         buf = ByteBufAllocator.DEFAULT.directBuffer(1);
-        buf.writeByte(Constants.LOAD_FILE);
+        buf.writeByte(Constants.UPLOAD_FILE);
         channel.writeAndFlush(buf);
 
         //отправить длину имени файла
