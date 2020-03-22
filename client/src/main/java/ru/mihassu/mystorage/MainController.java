@@ -51,7 +51,7 @@ public class MainController implements Initializable {
         }
 
         //обновить списки на сервере и на клиенте
-        refreshClientList(clientFilesList, "client-storage");
+//        refreshClientList(clientFilesList, "client-storage");
         Network.getInstance().getServerFiles();
 
         initItemsSelectedListeners();

@@ -69,15 +69,15 @@ public class Network {
 
     public void sendFile(Path path) {
         try {
-            FileSender.sendFile(path, channel, channelFuture -> {
+            FileSender.sendFile(path, channel, Constants.UPLOAD_FILE, channelFuture -> {
                 if (channelFuture.isSuccess()) {
-                    logIt("Файл отправлен");
+                    logIt("Файл отправлен на сервер");
                 } else {
                     channelFuture.cause().printStackTrace();
                 }
             });
         } catch (IOException e) {
-            logIt("Ошибка при отправке файла");
+            logIt("Ошибка при отправке файла на сервер");
             e.printStackTrace();
         }
     }

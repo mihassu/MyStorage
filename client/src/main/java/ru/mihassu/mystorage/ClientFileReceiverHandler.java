@@ -38,6 +38,8 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     filesNames.clear();
                     receivedfiles = 0;
                     fileNameLength = 0;
+                } else if (testByte == Constants.DOWNLOAD_FILE) {
+
                 } else {
                     System.out.println("ERROR: Invalid first byte - " + testByte);
                     break;
