@@ -1,4 +1,4 @@
-package ru.mihassu.mystorage;
+package ru.mihassu.mystorage.client;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

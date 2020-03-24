@@ -1,3 +1,5 @@
+package ru.mihassu.mystorage.server;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
@@ -33,14 +35,14 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        System.out.println("ServerFileReceiverHandler - channelRead()");
+        System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - channelRead()");
         ByteBuf buf = ((ByteBuf) msg);
-        System.out.println("ServerFileReceiverHandler - readableBytes: " + buf.readableBytes());
+        System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - readableBytes: " + buf.readableBytes());
 
         while (buf.readableBytes() > 0) {
             if (currentState == State.IDLE) {
                 byte testByte = buf.readByte();
-                System.out.println("ServerFileReceiverHandler - testByte: " + testByte);
+                System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - testByte: " + testByte);
                 if (testByte == Constants.UPLOAD_FILE) {
                     currentState = State.NAME_LENGTH;
                     receivedFileSize = 0L;
@@ -80,7 +82,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                 if (buf.readableBytes() >= 4) {
                     fileNameLength = buf.readInt();
                     currentState = State.NAME;
-                    System.out.println("ServerFileReceiverHandler - fileNameLength: " + fileNameLength);
+                    System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - fileNameLength: " + fileNameLength);
                 }
             }
 
@@ -92,17 +94,17 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     fileServer = new File("server-storage/" + new String(fileName, StandardCharsets.UTF_8));
                     out = new BufferedOutputStream(new FileOutputStream(fileServer));
                     currentState = State.FILE_SIZE;
-                    System.out.println("ServerFileReceiverHandler - fileServer: " + fileServer.getName());
+                    System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - fileServer: " + fileServer.getName());
                 }
             }
 
             //прочитать размер файла
             if (currentState == State.FILE_SIZE) {
-                System.out.println("ServerFileReceiverHandler - State.FILE_LENGTH. readableBytes: " + buf.readableBytes());
+                System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - State.FILE_LENGTH. readableBytes: " + buf.readableBytes());
                 if (buf.readableBytes() >= 8) {
                     fileSize = buf.readLong();
                     currentState = State.FILE;
-                    System.out.println("ServerFileReceiverHandler - fileSize: " + fileSize);
+                    System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - fileSize: " + fileSize);
                 }
             }
 
@@ -129,7 +131,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
         if (buf.readableBytes() == 0) {
             buf.release();
-            System.out.println("ServerFileReceiverHandler - buf.release()\n====================");
+            System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - buf.release()\n====================");
         }
 
     }

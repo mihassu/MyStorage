@@ -1,4 +1,4 @@
-package ru.mihassu.mystorage;
+package ru.mihassu.mystorage.client;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;

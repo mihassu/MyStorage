@@ -3,7 +3,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox fx:id="rootNode" alignment="CENTER" prefHeight="400.0" prefWidth="600.0" style="-fx-background-color: linear-gradient(#fff 0%, #eee 10%, #ddd 90%, #bbb 100%);" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.mihassu.mystorage.MainController">
+<VBox fx:id="rootNode" alignment="CENTER" prefHeight="400.0" prefWidth="600.0" style="-fx-background-color: linear-gradient(#fff 0%, #eee 10%, #ddd 90%, #bbb 100%);" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.mihassu.mystorage.client.MainController">
     <TextField fx:id="fileNameField" focusTraversable="false" alignment="CENTER" editable="false"/>
 
     <HBox>

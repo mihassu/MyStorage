@@ -1,4 +1,4 @@
-package ru.mihassu.mystorage;
+package ru.mihassu.mystorage.client;
 
 import java.util.List;
 

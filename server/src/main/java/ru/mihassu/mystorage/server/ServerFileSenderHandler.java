@@ -1,3 +1,5 @@
+package ru.mihassu.mystorage.server;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -16,7 +18,7 @@ public class ServerFileSenderHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        System.out.println("ServerFileSenderHandler - channelRead()");
+        System.out.println("ru.mihassu.mystorage.server.ServerFileSenderHandler - channelRead()");
         String name = (String) msg;
 
         if (fileExist(name)) {
