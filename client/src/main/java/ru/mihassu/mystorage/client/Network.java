@@ -25,15 +25,15 @@ public class Network {
 
     private static Network instance = new Network();
     private static Logger logger = Logger.getLogger(Network.class.getName());
-    private CallBack callOnFileSent;
+    private RefreshListCallback callOnListRefresh;
     private Channel channel;
 
     public static Network getInstance() {
         return instance;
     }
 
-    public void setCallOnFileSent(CallBack callOnFileSent) {
-        this.callOnFileSent = callOnFileSent;
+    public void setCallOnListRefresh(RefreshListCallback callOnListRefresh) {
+        this.callOnListRefresh = callOnListRefresh;
     }
 
     public void start(CountDownLatch countDownLatch) {
@@ -47,7 +47,9 @@ public class Network {
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
-                            socketChannel.pipeline().addLast(new ClientFileReceiverHandler(callOnFileSent));
+                            socketChannel
+                                    .pipeline()
+                                    .addLast(new ClientFileReceiverHandler(callOnListRefresh, () -> getServerFiles()));
                             channel = socketChannel;
                         }
                     })

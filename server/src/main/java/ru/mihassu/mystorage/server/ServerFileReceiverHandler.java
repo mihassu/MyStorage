@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import ru.mihassu.mystorage.common.Constants;
+import ru.mihassu.mystorage.common.FileReceiver;
 import ru.mihassu.mystorage.common.State;
 
 
@@ -32,20 +33,37 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private long receivedFileSize;
     private int serverFilesCount;
     private int serverFileLength;
+    private boolean isLoadActive = false;
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - channelRead()");
+        System.out.println("ServerFileReceiverHandler - channelRead()");
         ByteBuf buf = ((ByteBuf) msg);
-        System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - readableBytes: " + buf.readableBytes());
+        System.out.println("ServerFileReceiverHandler - readableBytes: " + buf.readableBytes());
 
         while (buf.readableBytes() > 0) {
-            if (currentState == State.IDLE) {
+
+            if (isLoadActive) {
+                try {
+                    FileReceiver.receiveFile(buf, "server-storage/", () -> {
+                        isLoadActive = false;
+                        currentState = State.IDLE;
+                        sendServerFilesList(ctx, buf);
+                        System.out.println("loadSuccess() - сервер получил файл");
+                    });
+                } catch (Exception e) {
+                    System.out.println("Ошибка при получении файла сервером: " + e.getMessage());
+                    isLoadActive = false;
+                    currentState = State.IDLE;
+                }
+            }
+
+            if (currentState == State.IDLE && buf.readableBytes() > 0) {
                 byte testByte = buf.readByte();
-                System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - testByte: " + testByte);
+                System.out.println("ServerFileReceiverHandler - testByte: " + testByte);
                 if (testByte == Constants.UPLOAD_FILE) {
-                    currentState = State.NAME_LENGTH;
-                    receivedFileSize = 0L;
+                    isLoadActive = true;
+                    currentState = State.LOAD_FILE;
 
                 } else if (testByte == Constants.DOWNLOAD_FILE) {
                     currentState = State.DOWNLOAD_NAME_LENGTH;
@@ -77,51 +95,6 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                 }
             }
 
-            //прочитать длину имени файла для загрузки на сервер
-            if (currentState == State.NAME_LENGTH) {
-                if (buf.readableBytes() >= 4) {
-                    fileNameLength = buf.readInt();
-                    currentState = State.NAME;
-                    System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - fileNameLength: " + fileNameLength);
-                }
-            }
-
-            //прочитать имя файла и создать пустой файл на сервере
-            if (currentState == State.NAME) {
-                if (buf.readableBytes() >= fileNameLength) {
-                    byte[] fileName = new byte[fileNameLength];
-                    buf.readBytes(fileName);
-                    fileServer = new File("server-storage/" + new String(fileName, StandardCharsets.UTF_8));
-                    out = new BufferedOutputStream(new FileOutputStream(fileServer));
-                    currentState = State.FILE_SIZE;
-                    System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - fileServer: " + fileServer.getName());
-                }
-            }
-
-            //прочитать размер файла
-            if (currentState == State.FILE_SIZE) {
-                System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - State.FILE_LENGTH. readableBytes: " + buf.readableBytes());
-                if (buf.readableBytes() >= 8) {
-                    fileSize = buf.readLong();
-                    currentState = State.FILE;
-                    System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - fileSize: " + fileSize);
-                }
-            }
-
-            //прочитать файл
-            if (currentState == State.FILE) {
-                while (buf.readableBytes() > 0) {
-                    out.write(buf.readByte());
-                    receivedFileSize++;
-                    if (receivedFileSize == fileSize) {
-                        currentState = State.IDLE;
-                        out.close();
-                        sendServerFilesList(ctx, buf);
-                        break;
-                    }
-                }
-            }
-
             //отправить список файлов на сервере
             if (currentState == State.REQUEST_FILES_LIST) {
                 sendServerFilesList(ctx, buf);
@@ -131,12 +104,12 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
         if (buf.readableBytes() == 0) {
             buf.release();
-            System.out.println("ru.mihassu.mystorage.server.ServerFileReceiverHandler - buf.release()\n====================");
+            System.out.println("ServerFileReceiverHandler - buf.release()\n====================");
         }
 
     }
 
-    private void sendServerFilesList(ChannelHandlerContext ctx, ByteBuf outBuf) {
+    private void sendServerFilesList(ChannelHandlerContext ctx, ByteBuf buf) {
         serverFilesCount = 0;
         serverFileLength = 0;
         List<byte[]> severFiles = getFilesList();
@@ -144,29 +117,29 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         System.out.println("serverFilesCount: " + serverFilesCount);
 
         //отправить контрольный байт
-        outBuf = ByteBufAllocator.DEFAULT.directBuffer(1);
-        outBuf.writeByte(Constants.REQUEST_FILES_LIST);
-        ctx.channel().writeAndFlush(outBuf);
+        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
+        buf.writeByte(Constants.REQUEST_FILES_LIST);
+        ctx.channel().writeAndFlush(buf);
 
         //отправить количество файлов
-        outBuf = ByteBufAllocator.DEFAULT.directBuffer(4);
-        outBuf.writeInt(serverFilesCount);
-        ctx.channel().writeAndFlush(outBuf); //int количество файлов
+        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+        buf.writeInt(serverFilesCount);
+        ctx.channel().writeAndFlush(buf); //int количество файлов
 
         for (int i = 0; i < serverFilesCount; i++) {
 
             //отправить длину имени файла
             serverFileLength = severFiles.get(i).length;
             System.out.println("serverFileLength: " + serverFileLength);
-            outBuf = ByteBufAllocator.DEFAULT.directBuffer(4);
-            outBuf.writeInt(serverFileLength);
-            ctx.channel().writeAndFlush(outBuf);
+            buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+            buf.writeInt(serverFileLength);
+            ctx.channel().writeAndFlush(buf);
 
             //отправить имя файла
-            outBuf = ByteBufAllocator.DEFAULT.directBuffer(serverFileLength);
-            outBuf.writeBytes(severFiles.get(i));
-            ctx.channel().writeAndFlush(outBuf);
-            System.out.println("readableBytes(): " + outBuf.readableBytes());
+            buf = ByteBufAllocator.DEFAULT.directBuffer(serverFileLength);
+            buf.writeBytes(severFiles.get(i));
+            ctx.channel().writeAndFlush(buf);
+            System.out.println("readableBytes(): " + buf.readableBytes());
         }
     }
 

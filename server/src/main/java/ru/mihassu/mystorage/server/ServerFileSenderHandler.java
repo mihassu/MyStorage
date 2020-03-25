@@ -18,7 +18,7 @@ public class ServerFileSenderHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        System.out.println("ru.mihassu.mystorage.server.ServerFileSenderHandler - channelRead()");
+        System.out.println("ServerFileSenderHandler - channelRead()");
         String name = (String) msg;
 
         if (fileExist(name)) {

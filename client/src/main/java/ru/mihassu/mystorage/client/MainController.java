@@ -7,6 +7,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.control.TextField;
+import ru.mihassu.mystorage.common.Constants;
 
 import java.io.IOException;
 import java.net.URL;
@@ -33,8 +34,8 @@ public class MainController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        Network.getInstance().setCallOnFileSent((filesNames) -> {
-            refreshClientList(clientFilesList, "client-storage");
+        Network.getInstance().setCallOnListRefresh((filesNames) -> {
+            refreshClientList(clientFilesList, Constants.clientDir);
             refreshServerList(filesNames);
             logIt("Callback - refresh");
         });
@@ -48,7 +49,6 @@ public class MainController implements Initializable {
         }
 
         //обновить списки на сервере и на клиенте
-//        refreshClientList(clientFilesList, "client-storage");
         Network.getInstance().getServerFiles();
 
         initItemsSelectedListeners();
@@ -81,13 +81,23 @@ public class MainController implements Initializable {
 
     public void onPressUploadBtn(ActionEvent actionEvent) {
         if (fileNameField.getLength() > 0) {
-            Network.getInstance().sendFile(Paths.get("client-storage/" + fileNameField.getText()));
+            Network.getInstance().sendFile(Paths.get(Constants.clientDir + fileNameField.getText()));
             fileNameField.clear();
         }
     }
 
     public void onPressDownloadBtn(ActionEvent actionEvent) {
         Network.getInstance().downloadFile(fileNameField.getText());
+    }
+
+    public void onPressDeletedBtn(ActionEvent actionEvent) {
+        try {
+            Files.delete(Paths.get(Constants.clientDir + fileNameField.getText()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        refreshClientList(clientFilesList, Constants.clientDir);
+
     }
 
     private void initItemsSelectedListeners() {
@@ -113,6 +123,7 @@ public class MainController implements Initializable {
     private static void logIt(String logText) {
         logger.log(Level.SEVERE, logText);
     }
+
 
 
 }
