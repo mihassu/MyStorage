@@ -22,7 +22,7 @@ public class ServerFileSenderHandler extends ChannelInboundHandlerAdapter {
         String name = (String) msg;
 
         if (fileExist(name)) {
-            file = Paths.get("server-storage/" + name);
+            file = Paths.get(Constants.serverDir + name);
             FileSender.sendFile(file, ctx.channel(), Constants.DOWNLOAD_FILE, channelFuture -> {
                 if (channelFuture.isSuccess()) {
                     System.out.println("Файл " + name + " отправлен клиенту");
@@ -35,7 +35,7 @@ public class ServerFileSenderHandler extends ChannelInboundHandlerAdapter {
 
     private boolean fileExist(String fileName) {
         try {
-            return Files.list(Paths.get("server-storage/"))
+            return Files.list(Paths.get(Constants.serverDir))
                     .map(Path::toFile)
                     .map(File::getName)
                     .anyMatch(name -> name.equals(fileName));

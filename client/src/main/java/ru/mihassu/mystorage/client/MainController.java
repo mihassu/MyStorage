@@ -100,6 +100,10 @@ public class MainController implements Initializable {
 
     }
 
+    public void onPressDeletedServerBtn(ActionEvent actionEvent) {
+        Network.getInstance().deleteServerFile(fileNameField.getText());
+    }
+
     private void initItemsSelectedListeners() {
         MultipleSelectionModel<String> clientSelectionModel = clientFilesList.getSelectionModel();
         clientSelectionModel

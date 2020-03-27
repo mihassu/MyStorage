@@ -14,10 +14,11 @@ public class FileReceiver {
     private static BufferedOutputStream out;
     private static File file;
     private static int fileNameLength;
+    private static String fileName;
     private static long fileSize;
     private static long receivedFileSize;
 
-    public static void receiveFile(ByteBuf buf, String dir, LoadSuccessCallback callback) throws Exception {
+    public static void receiveFile(ByteBuf buf, String dir, OperationCompleteCallback fileReceive) throws Exception {
 
         if (currentState == State.IDLE) {
             receivedFileSize = 0L;
@@ -36,9 +37,8 @@ public class FileReceiver {
         //прочитать имя файла и создать поток для записи файла
         if (currentState == State.NAME) {
             if (buf.readableBytes() >= fileNameLength) {
-                byte[] fileName = new byte[fileNameLength];
-                buf.readBytes(fileName);
-                file = new File(dir + new String(fileName, StandardCharsets.UTF_8));
+                fileName = readFileName(buf, fileNameLength);
+                file = new File(dir + fileName);
                 out = new BufferedOutputStream(new FileOutputStream(file));
                 currentState = State.FILE_SIZE;
                 System.out.println("FileReceiver - file: " + file.getName());
@@ -63,7 +63,7 @@ public class FileReceiver {
                     if (receivedFileSize == fileSize) {
                         currentState = State.IDLE;
                         out.close();
-                        callback.loadSuccess();
+                        fileReceive.success();
                         break;
                     }
                 }
@@ -71,5 +71,11 @@ public class FileReceiver {
                 System.out.println(e.getCause().getMessage());
             }
         }
+    }
+
+    public static String readFileName(ByteBuf buf, int length) {
+        byte[] fileNameBytes = new byte[length];
+        buf.readBytes(fileNameBytes);
+        return new String(fileNameBytes, StandardCharsets.UTF_8);
     }
 }

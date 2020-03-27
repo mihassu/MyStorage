@@ -5,9 +5,9 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import ru.mihassu.mystorage.common.Constants;
 import ru.mihassu.mystorage.common.FileReceiver;
+import ru.mihassu.mystorage.common.OperationCompleteCallback;
 import ru.mihassu.mystorage.common.State;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,15 +16,16 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private State currentState = State.IDLE;
     private int filesCount;
     private int receivedfiles;
+    private String fileName;
     private int fileNameLength;
     private List<String> filesNames = new ArrayList<>();
     private RefreshListCallback callOnListRefresh;
-    private FileReceiveCallback callOnFileReceived;
-    private boolean isLoadActive = false;
+    private OperationCompleteCallback fileReceived;
+    private boolean loadActive = false;
 
-    public ClientFileReceiverHandler(RefreshListCallback callOnListRefresh, FileReceiveCallback callOnFileReceived) {
+    public ClientFileReceiverHandler(RefreshListCallback callOnListRefresh, OperationCompleteCallback fileReceived) {
         this.callOnListRefresh = callOnListRefresh;
-        this.callOnFileReceived = callOnFileReceived;
+        this.fileReceived = fileReceived;
     }
 
     @Override
@@ -35,18 +36,18 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
         while (buf.readableBytes() > 0) {
 
-            if (isLoadActive) {
+            if (loadActive) {
                 try {
-                    FileReceiver.receiveFile(buf, "client-storage/", () -> {
-                        isLoadActive = false;
+                    FileReceiver.receiveFile(buf, Constants.clientDir, () -> {
+                        loadActive = false;
                         currentState = State.IDLE;
-                        callOnFileReceived.call();
+                        fileReceived.success();
                         System.out.println("loadSuccess() - клиент получил файл");
-                        //Обновить список - ?
                     });
+
                 } catch (Exception e) {
                     System.out.println("Ошибка при получении файла клиентом: " + e.getMessage());
-                    isLoadActive = false;
+                    loadActive = false;
                     currentState = State.IDLE;
                 }
             }
@@ -60,7 +61,7 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     receivedfiles = 0;
                     fileNameLength = 0;
                 } else if (testByte == Constants.DOWNLOAD_FILE) {
-                    isLoadActive = true;
+                    loadActive = true;
                     currentState = State.LOAD_FILE;
                 } else {
                     System.out.println("ERROR: Invalid first byte - " + testByte);
@@ -92,12 +93,10 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
                     if (currentState == State.NAME) {
                         //прочитать имя файла
-                        byte[] fileName = new byte[fileNameLength];
                         if (buf.readableBytes() >= fileNameLength) {
-                            buf.readBytes(fileName);
-
+                            fileName = FileReceiver.readFileName(buf, fileNameLength);
                             //добавить имя файла в массив
-                            filesNames.add(new String(fileName, StandardCharsets.UTF_8));
+                            filesNames.add(fileName);
                             receivedfiles++;
                             currentState = State.NAME_LENGTH;
                         }

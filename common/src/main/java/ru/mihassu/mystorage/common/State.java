@@ -8,7 +8,5 @@ public enum State {
     FILE,
     FILES_COUNT,
     REQUEST_FILES_LIST,
-    DOWNLOAD_NAME_LENGTH,
-    DOWNLOAD_NAME,
-    LOAD_FILE
+    LOAD_FILE,
 }

@@ -84,11 +84,33 @@ public class Network {
         }
     }
 
-    public void downloadFile(String name) {
+
+    public void downloadFile(String name) {     //повторение кода!!
         ByteBuf buf;
         //отправить контольный байт
         buf = ByteBufAllocator.DEFAULT.directBuffer(1);
         buf.writeByte(Constants.DOWNLOAD_FILE);
+        channel.writeAndFlush(buf);
+
+        //отправить длину имени файла
+        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+        buf.writeInt(name.length());
+        channel.writeAndFlush(buf);
+
+        //отправить имя файла
+        byte[] fileName = name.getBytes(StandardCharsets.UTF_8);
+        buf = ByteBufAllocator.DEFAULT.directBuffer(name.length());
+        buf.writeBytes(fileName);
+        channel.writeAndFlush(buf);
+    }
+
+
+    public void deleteServerFile(String name) {      //повторение кода!!
+
+        ByteBuf buf;
+        //отправить контольный байт
+        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
+        buf.writeByte(Constants.DELETE_FILE);
         channel.writeAndFlush(buf);
 
         //отправить длину имени файла

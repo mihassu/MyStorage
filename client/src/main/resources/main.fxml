@@ -13,6 +13,8 @@
             <Button onAction="#onPressUploadBtn" text="Загрузить на сервер" />
             <Button onAction="#onPressDownloadBtn" text="Скачать с сервера" />
             <Button onAction="#onPressDeletedBtn" text="Удалить" />
+            <Button onAction="#onPressDeletedServerBtn" text="Удалить с сервера" />
+
 
         </VBox>
 
