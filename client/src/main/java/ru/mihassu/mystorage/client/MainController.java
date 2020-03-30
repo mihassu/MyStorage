@@ -47,13 +47,17 @@ public class MainController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         setAuthentificated(false);
         Network.getInstance().setCallOnAcceptData((filesNames, nick) -> {
-            if (filesNames != null) {
+            if (filesNames == null && nick == null) {
+                System.out.println("Не удалось авторизоваться");
+
+            } else if (filesNames != null) {
                 refreshClientList(clientFilesList, Constants.clientDir);
                 refreshServerList(filesNames);
 //            logIt("Callback - refresh");
-            }
-            if (nick != null) {
+
+            } else {
                 setAuthentificated(true);
+                System.out.println("Авторизация выполнена. Ник: " + nick);
             }
         });
 
@@ -143,6 +147,10 @@ public class MainController implements Initializable {
         Network.getInstance().sendAuth(loginField.getText(), passField.getText());
         loginField.clear();
         passField.clear();
+    }
+
+    public void onPressDisconnectBtn(ActionEvent actionEvent) {
+        setAuthentificated(false);
     }
 
     public void setAuthentificated(boolean authentificated) {

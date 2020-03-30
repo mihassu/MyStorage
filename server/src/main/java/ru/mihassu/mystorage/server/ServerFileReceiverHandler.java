@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import ru.mihassu.mystorage.common.*;
+import ru.mihassu.mystorage.server.db.DbAuthService;
 
 
 public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
@@ -29,6 +30,12 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private boolean deleteActive = false;
     private boolean downLoadActive = false;
     private boolean authActive = false;
+    private DbAuthService authService;
+    private String nick;
+
+    public ServerFileReceiverHandler(DbAuthService authService) {
+        this.authService = authService;
+    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -111,7 +118,13 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     String[] lp = ((String)loginPass).split("/");
                     System.out.println("ServerFileReceiverHandler - логин: " + lp[0]);
                     System.out.println("ServerFileReceiverHandler - пароль: " + lp[1]);
-                    confirmAuth(ctx);
+                    nick = authService.getNicknameByLoginPass(lp[0], lp[1]);
+                    if (nick != null) {
+                        confirmAuth(ctx, nick);
+
+                    } else {
+                        sendTestByte(ctx, buf, Constants.AUTH_FAIL);
+                    }
                     authActive = false;
                     currentState = State.IDLE;
                 });
@@ -156,8 +169,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         ctx.close();
     }
 
-    private void confirmAuth(ChannelHandlerContext ctx) {
-        String nick = "nick";
+    private void confirmAuth(ChannelHandlerContext ctx, String nick) {
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
         sendTestByte(ctx, buf, Constants.AUTH);
         sendInt(ctx, buf, nick.length());

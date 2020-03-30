@@ -49,7 +49,9 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     authActive = true;
                     currentState = State.NAME_LENGTH;
 
-                }  else {
+                } else if (testByte == Constants.AUTH_FAIL) {
+                    callOnAcceptData.provideData(null, null);
+                } else {
                     System.out.println("ERROR: Invalid first byte - " + testByte);
                     break;
                 }
