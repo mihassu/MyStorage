@@ -75,13 +75,16 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     filesCount = buf.readInt();
                     currentState = State.NAME_LENGTH;
                     System.out.println("ClientFileReceiverHandler - filesCount: " + filesCount);
+                    if (filesCount == 0) {
+                        callOnListRefresh.refreshList(filesNames);
+                        currentState = State.IDLE;
+                    }
                 }
             }
 
 
             if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
                 while (buf.readableBytes() > 0) {
-                    if (filesCount == 0) break;
                     //прочитать длину имени файла
                     if (currentState == State.NAME_LENGTH) {
                         if (buf.readableBytes() >= 4) {

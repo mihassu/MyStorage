@@ -93,7 +93,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                         sendServerFilesList(ctx);
                         System.out.println("success() - файл удален");
                     } catch (IOException e) {
-                        System.out.println("Ошибка при удалении файла сервером: " + e.getMessage());
+                        System.out.println("Ошибка при удалении файла с сервера: " + e.getMessage());
                         deleteActive = false;
                         currentState = State.IDLE;
                     }
@@ -170,6 +170,8 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             buf.writeBytes(severFiles.get(i));
             ctx.channel().writeAndFlush(buf);
         }
+        System.out.println("ServerFileReceiverHandler - Передано количество файлов на сервере: " + serverFilesCount);
+
     }
 
     private List<byte[]> getFilesList() {

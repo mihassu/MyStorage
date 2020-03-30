@@ -55,12 +55,15 @@ public class MainController implements Initializable {
     }
 
 
-
     private void refreshServerList(List<String> filesNames) {
         Platform.runLater(() -> {
             serverFilesList.getItems().clear();
-            for (String f: filesNames) {
-                serverFilesList.getItems().add(f);
+            if (filesNames.size() > 0) {
+                for (String f : filesNames) {
+                    serverFilesList.getItems().add(f);
+                }
+            } else {
+                serverFilesList.getItems().add("Пусто");
             }
         });
     }
@@ -81,39 +84,56 @@ public class MainController implements Initializable {
 
     public void onPressUploadBtn(ActionEvent actionEvent) {
         if (fileNameField.getLength() > 0) {
-            Network.getInstance().sendFile(Paths.get(Constants.clientDir + fileNameField.getText()));
+            String[] path = fileNameField.getText().split("/");
+            if (path[0].equals("client-storage")) {
+                Network.getInstance().sendFile(Paths.get(fileNameField.getText()));
+            } else {
+                System.out.println("Выберите файл на клиенте");
+            }
             fileNameField.clear();
         }
     }
 
     public void onPressDownloadBtn(ActionEvent actionEvent) {
-        Network.getInstance().downloadFile(fileNameField.getText());
+        if (fileNameField.getText().length() > 0) {
+            String[] path = fileNameField.getText().split("/");
+            if (path[0].equals("server-storage")) {
+                Network.getInstance().downloadFile(path[1]);
+            } else {
+                System.out.println("Выберите файл на сервере");
+            }
+            fileNameField.clear();
+        }
     }
 
     public void onPressDeletedBtn(ActionEvent actionEvent) {
-        try {
-            Files.delete(Paths.get(Constants.clientDir + fileNameField.getText()));
-        } catch (IOException e) {
-            e.printStackTrace();
+        String[] path = fileNameField.getText().split("/");
+        switch (path[0]) {
+            case "server-storage":
+                Network.getInstance().deleteServerFile(path[1]);
+                break;
+            case "client-storage":
+                try {
+                    Files.delete(Paths.get(fileNameField.getText()));
+                } catch (IOException e) {
+                    System.out.println("Ошибка при удалении файла на клиенте: " + e.getMessage());
+                }
+                refreshClientList(clientFilesList, Constants.clientDir);
+                break;
         }
-        refreshClientList(clientFilesList, Constants.clientDir);
-
     }
 
-    public void onPressDeletedServerBtn(ActionEvent actionEvent) {
-        Network.getInstance().deleteServerFile(fileNameField.getText());
-    }
 
     private void initItemsSelectedListeners() {
         MultipleSelectionModel<String> clientSelectionModel = clientFilesList.getSelectionModel();
         clientSelectionModel
                 .selectedItemProperty()
-                .addListener((observable, oldValue, newValue) -> fileNameField.setText(newValue));
+                .addListener((observable, oldValue, newValue) -> fileNameField.setText(Constants.clientDir + newValue));
 
         MultipleSelectionModel<String> serverSelectionModel = serverFilesList.getSelectionModel();
         serverSelectionModel
                 .selectedItemProperty()
-                .addListener((observable, oldValue, newValue) -> fileNameField.setText(newValue));
+                .addListener((observable, oldValue, newValue) -> fileNameField.setText(Constants.serverDir + newValue));
     }
 
     private void updateUI(Runnable r) {
@@ -127,7 +147,6 @@ public class MainController implements Initializable {
     private static void logIt(String logText) {
         logger.log(Level.SEVERE, logText);
     }
-
 
 
 }
