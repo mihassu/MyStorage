@@ -37,7 +37,7 @@ public class FileReceiver {
         //прочитать имя файла и создать поток для записи файла
         if (currentState == State.NAME) {
             if (buf.readableBytes() >= fileNameLength) {
-                fileName = readFileName(buf, fileNameLength);
+                fileName = readFileNameFromBytes(buf, fileNameLength);
                 file = new File(dir + fileName);
                 out = new BufferedOutputStream(new FileOutputStream(file));
                 currentState = State.FILE_SIZE;
@@ -73,9 +73,10 @@ public class FileReceiver {
         }
     }
 
-    public static String readFileName(ByteBuf buf, int length) {
+    public static String readFileNameFromBytes(ByteBuf buf, int length) {
         byte[] fileNameBytes = new byte[length];
         buf.readBytes(fileNameBytes);
         return new String(fileNameBytes, StandardCharsets.UTF_8);
     }
+
 }

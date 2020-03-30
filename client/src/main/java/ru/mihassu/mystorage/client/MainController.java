@@ -6,7 +6,10 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MultipleSelectionModel;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import ru.mihassu.mystorage.common.Constants;
 
 import java.io.IOException;
@@ -22,22 +25,36 @@ import java.util.logging.Logger;
 public class MainController implements Initializable {
 
     private static Logger logger = Logger.getLogger(MainController.class.getName());
+    private boolean authentificated;
 
     @FXML
-    TextField fileNameField;
+    VBox authPanel;
 
     @FXML
-    ListView<String> clientFilesList;
+    HBox workPanel;
 
     @FXML
-    ListView<String> serverFilesList;
+    TextField fileNameField, loginField;
+
+    @FXML
+    PasswordField passField;
+
+    @FXML
+    ListView<String> clientFilesList, serverFilesList;
+
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        Network.getInstance().setCallOnListRefresh((filesNames) -> {
-            refreshClientList(clientFilesList, Constants.clientDir);
-            refreshServerList(filesNames);
-            logIt("Callback - refresh");
+        setAuthentificated(false);
+        Network.getInstance().setCallOnAcceptData((filesNames, nick) -> {
+            if (filesNames != null) {
+                refreshClientList(clientFilesList, Constants.clientDir);
+                refreshServerList(filesNames);
+//            logIt("Callback - refresh");
+            }
+            if (nick != null) {
+                setAuthentificated(true);
+            }
         });
 
         final CountDownLatch networkStarter = new CountDownLatch(1);
@@ -53,7 +70,6 @@ public class MainController implements Initializable {
 
         initItemsSelectedListeners();
     }
-
 
     private void refreshServerList(List<String> filesNames) {
         Platform.runLater(() -> {
@@ -123,6 +139,21 @@ public class MainController implements Initializable {
         }
     }
 
+    public void onPressAuthBtn(ActionEvent actionEvent) {
+        Network.getInstance().sendAuth(loginField.getText(), passField.getText());
+        loginField.clear();
+        passField.clear();
+    }
+
+    public void setAuthentificated(boolean authentificated) {
+        this.authentificated = authentificated;
+        authPanel.setVisible(!authentificated); // панель с логин паролем
+        authPanel.setManaged(!authentificated); // место под этот элемент
+        workPanel.setVisible(authentificated);
+        workPanel.setManaged(authentificated);
+        fileNameField.setVisible(authentificated);
+        fileNameField.setManaged(authentificated);
+    }
 
     private void initItemsSelectedListeners() {
         MultipleSelectionModel<String> clientSelectionModel = clientFilesList.getSelectionModel();
@@ -147,6 +178,7 @@ public class MainController implements Initializable {
     private static void logIt(String logText) {
         logger.log(Level.SEVERE, logText);
     }
+
 
 
 }

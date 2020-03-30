@@ -1,5 +1,6 @@
 package ru.mihassu.mystorage.server;
 
+import com.sun.org.apache.xerces.internal.impl.xpath.XPath;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
@@ -27,7 +28,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private boolean loadActive = false;
     private boolean deleteActive = false;
     private boolean downLoadActive = false;
-    private boolean readFileNameActive = false;
+    private boolean authActive = false;
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -55,7 +56,12 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     deleteActive = true;
                     currentState = State.NAME_LENGTH;
 
-                } else {
+                } else if (testByte == Constants.AUTH) {
+                    authActive = true;
+                    currentState = State.NAME_LENGTH;
+                }
+
+                else {
                     System.out.println("ERROR: Invalid first byte - " + testByte);
                     break;
                 }
@@ -100,6 +106,17 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                 });
             }
 
+            if (authActive) {
+                readFileName(buf, loginPass -> {
+                    String[] lp = ((String)loginPass).split("/");
+                    System.out.println("ServerFileReceiverHandler - логин: " + lp[0]);
+                    System.out.println("ServerFileReceiverHandler - пароль: " + lp[1]);
+                    confirmAuth(ctx);
+                    authActive = false;
+                    currentState = State.IDLE;
+                });
+            }
+
             //отправить список файлов на сервере
             if (currentState == State.REQUEST_FILES_LIST) {
                 sendServerFilesList(ctx);
@@ -126,7 +143,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         //прочитать имя файла
         if (currentState == State.NAME) {
             if (buf.readableBytes() >= fileNameLength) {
-                fileName = FileReceiver.readFileName(buf, fileNameLength);
+                fileName = FileReceiver.readFileNameFromBytes(buf, fileNameLength);
                 callback.provide(fileName);
                 currentState = State.IDLE;
             }
@@ -139,39 +156,60 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         ctx.close();
     }
 
+    private void confirmAuth(ChannelHandlerContext ctx) {
+        String nick = "nick";
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        sendTestByte(ctx, buf, Constants.AUTH);
+        sendInt(ctx, buf, nick.length());
+        sendBytes(ctx, buf, nick.getBytes(StandardCharsets.UTF_8));
+    }
+
     private void sendServerFilesList(ChannelHandlerContext ctx) {
         serverFilesCount = 0;
         serverFileLength = 0;
         List<byte[]> severFiles = getFilesList();
         serverFilesCount = severFiles.size();
 
-        ByteBuf buf;
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
 
         //отправить контрольный байт
-        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
-        buf.writeByte(Constants.REQUEST_FILES_LIST);
-        ctx.channel().writeAndFlush(buf);
+        sendTestByte(ctx, buf, Constants.REQUEST_FILES_LIST);
 
         //отправить количество файлов
-        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
-        buf.writeInt(serverFilesCount);
-        ctx.channel().writeAndFlush(buf);
+        sendInt(ctx, buf, serverFilesCount);
 
         for (int i = 0; i < serverFilesCount; i++) {
 
             //отправить длину имени файла
             serverFileLength = severFiles.get(i).length;
-            buf = ByteBufAllocator.DEFAULT.directBuffer(4);
-            buf.writeInt(serverFileLength);
-            ctx.channel().writeAndFlush(buf);
+            sendInt(ctx, buf, serverFileLength);
 
             //отправить имя файла
-            buf = ByteBufAllocator.DEFAULT.directBuffer(serverFileLength);
-            buf.writeBytes(severFiles.get(i));
-            ctx.channel().writeAndFlush(buf);
+            sendBytes(ctx, buf, severFiles.get(i));
         }
         System.out.println("ServerFileReceiverHandler - Передано количество файлов на сервере: " + serverFilesCount);
 
+    }
+
+    //отправить контольный байт
+    public void sendTestByte(ChannelHandlerContext ctx, ByteBuf buf, byte testByte) {
+        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
+        buf.writeByte(testByte);
+        ctx.channel().writeAndFlush(buf);
+    }
+
+    //отправить int
+    public void sendInt(ChannelHandlerContext ctx, ByteBuf buf, int nameLength) {
+        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+        buf.writeInt(nameLength);
+        ctx.pipeline().writeAndFlush(buf);
+    }
+
+    //отправить bytes
+    private void sendBytes(ChannelHandlerContext ctx, ByteBuf buf, byte[] bytes) {
+        buf = ByteBufAllocator.DEFAULT.directBuffer(bytes.length);
+        buf.writeBytes(bytes);
+        ctx.channel().writeAndFlush(buf);
     }
 
     private List<byte[]> getFilesList() {

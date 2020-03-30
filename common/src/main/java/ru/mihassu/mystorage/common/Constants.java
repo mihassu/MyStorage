@@ -5,6 +5,7 @@ public interface Constants {
     byte DOWNLOAD_FILE = 14; //скачать с сервера
     byte REQUEST_FILES_LIST = 9; //запросить список фалов
     byte DELETE_FILE = 8; //удалить файл
+    byte AUTH = 3;
 
     String clientDir = "client-storage/";
     String serverDir = "server-storage/";

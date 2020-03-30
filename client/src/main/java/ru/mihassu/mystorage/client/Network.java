@@ -25,15 +25,15 @@ public class Network {
 
     private static Network instance = new Network();
     private static Logger logger = Logger.getLogger(Network.class.getName());
-    private RefreshListCallback callOnListRefresh;
+    private HandlerOperationCallback callOnAcceptData;
     private Channel channel;
 
     public static Network getInstance() {
         return instance;
     }
 
-    public void setCallOnListRefresh(RefreshListCallback callOnListRefresh) {
-        this.callOnListRefresh = callOnListRefresh;
+    public void setCallOnAcceptData(HandlerOperationCallback callOnAcceptData) {
+        this.callOnAcceptData = callOnAcceptData;
     }
 
     public void start(CountDownLatch countDownLatch) {
@@ -49,7 +49,7 @@ public class Network {
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             socketChannel
                                     .pipeline()
-                                    .addLast(new ClientFileReceiverHandler(callOnListRefresh, () -> getServerFiles()));
+                                    .addLast(new ClientFileReceiverHandler(callOnAcceptData, () -> getServerFiles()));
                             channel = socketChannel;
                         }
                     })
@@ -85,50 +85,56 @@ public class Network {
     }
 
 
-    public void downloadFile(String name) {     //повторение кода!!
-        ByteBuf buf;
-        //отправить контольный байт
-        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
-        buf.writeByte(Constants.DOWNLOAD_FILE);
-        channel.writeAndFlush(buf);
-
-        //отправить длину имени файла
-        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
-        buf.writeInt(name.length());
-        channel.writeAndFlush(buf);
-
-        //отправить имя файла
-        byte[] fileName = name.getBytes(StandardCharsets.UTF_8);
-        buf = ByteBufAllocator.DEFAULT.directBuffer(name.length());
-        buf.writeBytes(fileName);
-        channel.writeAndFlush(buf);
+    public void downloadFile(String name) {
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        sendTestByte(buf, Constants.DOWNLOAD_FILE);
+        sendNameLength(buf, name.length());
+        sendFileName(buf, name);
     }
 
 
-    public void deleteServerFile(String name) {      //повторение кода!!
 
-        ByteBuf buf;
-        //отправить контольный байт
-        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
-        buf.writeByte(Constants.DELETE_FILE);
-        channel.writeAndFlush(buf);
 
-        //отправить длину имени файла
-        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
-        buf.writeInt(name.length());
-        channel.writeAndFlush(buf);
-
-        //отправить имя файла
-        byte[] fileName = name.getBytes(StandardCharsets.UTF_8);
-        buf = ByteBufAllocator.DEFAULT.directBuffer(name.length());
-        buf.writeBytes(fileName);
-        channel.writeAndFlush(buf);
+    public void deleteServerFile(String name) {
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        sendTestByte(buf, Constants.DELETE_FILE);
+        sendNameLength(buf, name.length());
+        sendFileName(buf, name);
     }
 
 
     public void getServerFiles() {
-        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(1);
-        buf.writeByte(Constants.REQUEST_FILES_LIST);
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        sendTestByte(buf, Constants.REQUEST_FILES_LIST);
+    }
+
+    public void sendAuth(String login, String password) {
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        String loginPass = login + "/" + password;
+        sendTestByte(buf, Constants.AUTH);
+        sendNameLength(buf, loginPass.length());
+        sendFileName(buf, loginPass);
+    }
+
+    //отправить контольный байт
+    public void sendTestByte(ByteBuf buf, byte testByte) {
+        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
+        buf.writeByte(testByte);
+        channel.writeAndFlush(buf);
+    }
+
+    //отправить длину имени файла
+    public void sendNameLength(ByteBuf buf, int nameLength) {
+        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+        buf.writeInt(nameLength);
+        channel.writeAndFlush(buf);
+    }
+
+    //отправить имя файла
+    private void sendFileName(ByteBuf buf, String name) {
+        byte[] fileName = name.getBytes(StandardCharsets.UTF_8);
+        buf = ByteBufAllocator.DEFAULT.directBuffer(name.length());
+        buf.writeBytes(fileName);
         channel.writeAndFlush(buf);
     }
 

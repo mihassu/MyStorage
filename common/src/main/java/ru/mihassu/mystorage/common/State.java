@@ -9,4 +9,5 @@ public enum State {
     FILES_COUNT,
     REQUEST_FILES_LIST,
     LOAD_FILE,
+    AUTH
 }

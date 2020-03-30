@@ -4,9 +4,16 @@
 <?import javafx.scene.layout.*?>
 
 <VBox fx:id="rootNode" alignment="CENTER" prefHeight="400.0" prefWidth="600.0" style="-fx-background-color: linear-gradient(#fff 0%, #eee 10%, #ddd 90%, #bbb 100%);" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.mihassu.mystorage.client.MainController">
-    <TextField fx:id="fileNameField" focusTraversable="false" alignment="CENTER" editable="false"/>
 
-    <HBox>
+    <TextField fx:id="fileNameField" alignment="CENTER" editable="false" focusTraversable="false" />
+
+    <VBox fx:id="authPanel" alignment="CENTER">
+        <TextField fx:id="loginField" alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" promptText="Логин" />
+        <PasswordField fx:id="passField" alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" onAction="#onPressAuthBtn" promptText="Пароль" />
+        <Button onAction="#onPressAuthBtn" text="Соединение" />
+    </VBox>
+
+    <HBox fx:id="workPanel">
         <ListView fx:id="clientFilesList" VBox.vgrow="ALWAYS" />
 
         <VBox alignment="TOP_CENTER" HBox.hgrow="ALWAYS">
