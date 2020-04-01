@@ -26,6 +26,7 @@ public class MainController implements Initializable {
 
     private static Logger logger = Logger.getLogger(MainController.class.getName());
     private boolean authentificated;
+    private int userId;
 
     @FXML
     VBox authPanel;
@@ -34,7 +35,7 @@ public class MainController implements Initializable {
     HBox workPanel;
 
     @FXML
-    TextField fileNameField, loginField;
+    TextField fileNameField, loginField, nickField;
 
     @FXML
     PasswordField passField;
@@ -46,7 +47,7 @@ public class MainController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setAuthentificated(false);
-        Network.getInstance().setCallOnAcceptData((filesNames, nick) -> {
+        Network.getInstance().setCallOnAcceptData((filesNames, nick, userId) -> {
             if (filesNames == null && nick == null) {
                 System.out.println("Не удалось авторизоваться");
 
@@ -57,6 +58,11 @@ public class MainController implements Initializable {
 
             } else {
                 setAuthentificated(true);
+                nickField.setText(nick);
+                this.userId = userId;
+                //обновить списки на сервере и на клиенте
+                Network.getInstance().getServerFiles(userId);
+                initItemsSelectedListeners();
                 System.out.println("Авторизация выполнена. Ник: " + nick);
             }
         });
@@ -69,10 +75,6 @@ public class MainController implements Initializable {
             e.printStackTrace();
         }
 
-        //обновить списки на сервере и на клиенте
-        Network.getInstance().getServerFiles();
-
-        initItemsSelectedListeners();
     }
 
     private void refreshServerList(List<String> filesNames) {
@@ -106,7 +108,7 @@ public class MainController implements Initializable {
         if (fileNameField.getLength() > 0) {
             String[] path = fileNameField.getText().split("/");
             if (path[0].equals("client-storage")) {
-                Network.getInstance().sendFile(Paths.get(fileNameField.getText()));
+                Network.getInstance().sendFile(Paths.get(fileNameField.getText()), userId);
             } else {
                 System.out.println("Выберите файл на клиенте");
             }
@@ -118,7 +120,7 @@ public class MainController implements Initializable {
         if (fileNameField.getText().length() > 0) {
             String[] path = fileNameField.getText().split("/");
             if (path[0].equals("server-storage")) {
-                Network.getInstance().downloadFile(path[1]);
+                Network.getInstance().downloadFile(path[1], userId);
             } else {
                 System.out.println("Выберите файл на сервере");
             }
@@ -130,7 +132,7 @@ public class MainController implements Initializable {
         String[] path = fileNameField.getText().split("/");
         switch (path[0]) {
             case "server-storage":
-                Network.getInstance().deleteServerFile(path[1]);
+                Network.getInstance().deleteServerFile(path[1], userId);
                 break;
             case "client-storage":
                 try {
@@ -159,8 +161,8 @@ public class MainController implements Initializable {
         authPanel.setManaged(!authentificated); // место под этот элемент
         workPanel.setVisible(authentificated);
         workPanel.setManaged(authentificated);
-        fileNameField.setVisible(authentificated);
-        fileNameField.setManaged(authentificated);
+        nickField.setVisible(authentificated);
+        nickField.setManaged(authentificated);
     }
 
     private void initItemsSelectedListeners() {

@@ -15,13 +15,16 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private int receivedfiles;
     private String fileName;
     private int fileNameLength;
+    private String nick;
+    private int userId;
     private List<String> filesNames = new ArrayList<>();
     private HandlerOperationCallback callOnAcceptData;
-    private OperationCompleteCallback fileReceived;
+    private ProvideDataCallback fileReceived;
     private boolean loadActive = false;
     private boolean authActive = false;
+    private boolean filesCountActive = false;
 
-    public ClientFileReceiverHandler(HandlerOperationCallback callOnAcceptData, OperationCompleteCallback fileReceived) {
+    public ClientFileReceiverHandler(HandlerOperationCallback callOnAcceptData, ProvideDataCallback fileReceived) {
         this.callOnAcceptData = callOnAcceptData;
         this.fileReceived = fileReceived;
     }
@@ -34,23 +37,27 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
         while (buf.readableBytes() > 0) {
 
-            if (currentState == State.IDLE && buf.readableBytes() > 0) {
+            if (currentState == State.IDLE) {
                 byte testByte = buf.readByte();
                 System.out.println("ClientFileReceiverHandler - testByte: " + testByte);
                 if (testByte == Constants.REQUEST_FILES_LIST) {
                     currentState = State.FILES_COUNT;
+                    filesCountActive = true;
                     filesNames.clear();
                     receivedfiles = 0;
                     fileNameLength = 0;
+
                 } else if (testByte == Constants.DOWNLOAD_FILE) {
                     loadActive = true;
                     currentState = State.LOAD_FILE;
+
                 } else if (testByte == Constants.AUTH) {
                     authActive = true;
                     currentState = State.NAME_LENGTH;
 
                 } else if (testByte == Constants.AUTH_FAIL) {
-                    callOnAcceptData.provideData(null, null);
+                    callOnAcceptData.provideData(null, null, 0);
+
                 } else {
                     System.out.println("ERROR: Invalid first byte - " + testByte);
                     break;
@@ -62,8 +69,8 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     FileReceiver.receiveFile(buf, Constants.clientDir, () -> {
                         loadActive = false;
                         currentState = State.IDLE;
-                        fileReceived.success();
-                        System.out.println("loadSuccess() - клиент получил файл");
+                        fileReceived.provide(userId);
+                        System.out.println("ClientFileReceiverHandler - клиент получил файл");
                     });
 
                 } catch (Exception e) {
@@ -74,59 +81,55 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
             }
 
             if (authActive) {
-                readFileName(buf, nick -> {
-                    System.out.println("ClientFileReceiverHandler - получен ник от сервера: " + nick);
-                    authActive = false;
-                    currentState = State.IDLE;
-                    callOnAcceptData.provideData(null, (String) nick);
-                });
-            }
+                if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
+                    readFileName(buf, nick -> {
+                        this.nick = (String) nick;
+                        System.out.println("ClientFileReceiverHandler - получен ник от сервера: " + nick);
+                        currentState = State.ID;
+                    });
+                }
 
-            //Прочитать количество файлов
-            if (currentState == State.FILES_COUNT) {
-                if (buf.readableBytes() >= 4) {
-                    filesCount = buf.readInt();
-                    currentState = State.NAME_LENGTH;
-                    System.out.println("ClientFileReceiverHandler - filesCount: " + filesCount);
-                    if (filesCount == 0) {
-                        callOnAcceptData.provideData(filesNames, null);
+                if (currentState == State.ID) {
+                    if (buf.readableBytes() >= 4) {
+                        userId = buf.readInt();
+                        authActive = false;
                         currentState = State.IDLE;
+                        callOnAcceptData.provideData(null, nick, userId);
                     }
                 }
             }
 
-            if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
-                while (buf.readableBytes() > 0) {
-                    //прочитать длину имени файла
-                    if (currentState == State.NAME_LENGTH) {
-                        if (buf.readableBytes() >= 4) {
-                            fileNameLength = buf.readInt();
-                            currentState = State.NAME;
-                            System.out.println("ClientFileReceiverHandler - fileNameLength: " + fileNameLength);
-                        }
-                    }
-
-                    if (currentState == State.NAME) {
-                        //прочитать имя файла
-                        if (buf.readableBytes() >= fileNameLength) {
-                            fileName = FileReceiver.readFileNameFromBytes(buf, fileNameLength);
-                            //добавить имя файла в массив
-                            filesNames.add(fileName);
-                            receivedfiles++;
-                            currentState = State.NAME_LENGTH;
-                        }
-
-                        if (receivedfiles >= filesCount) {
-                            System.out.println("ClientFileReceiverHandler - fileNames" + filesNames.toString());
-                            callOnAcceptData.provideData(filesNames, null);
+            if (filesCountActive) {
+                //Прочитать количество файлов
+                if (currentState == State.FILES_COUNT) {
+                    if (buf.readableBytes() >= 4) {
+                        filesCount = buf.readInt();
+                        currentState = State.NAME_LENGTH;
+                        System.out.println("ClientFileReceiverHandler - Количество файлов нв сервере: " + filesCount);
+                        if (filesCount == 0) {
+                            callOnAcceptData.provideData(filesNames, null, 0);
+                            filesCountActive = false;
                             currentState = State.IDLE;
-                            break;
                         }
                     }
                 }
-            }
 
+                //Прочитать имя файла
+                readFileName(buf, name -> {
+                    filesNames.add((String) name);
+                    receivedfiles++;
+                    currentState = State.NAME_LENGTH;
+                });
+
+                if (receivedfiles >= filesCount) {
+                    System.out.println("ClientFileReceiverHandler - Файлы на сервере: " + filesNames.toString());
+                    callOnAcceptData.provideData(filesNames, null, 0);
+                    filesCountActive = false;
+                    currentState = State.IDLE;
+                }
+            }
         }
+
         if (buf.readableBytes() == 0) {
             buf.release();
             System.out.println("ClientFileReceiverHandler - buf.release()\n====================");
@@ -149,7 +152,7 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
             if (buf.readableBytes() >= fileNameLength) {
                 fileName = FileReceiver.readFileNameFromBytes(buf, fileNameLength);
                 callback.provide(fileName);
-                currentState = State.IDLE;
+//                currentState = State.IDLE;
             }
         }
     }

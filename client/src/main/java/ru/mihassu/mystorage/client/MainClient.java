@@ -11,13 +11,11 @@ import java.util.logging.Logger;
 
 public class MainClient extends Application {
 
-    private static Logger logger = Logger.getLogger(MainClient.class.getName());
-
     @Override
     public void start(Stage primaryStage) throws Exception {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/main.fxml"));
         Parent root = fxmlLoader.load();
-        primaryStage.setTitle("Box Client");
+        primaryStage.setTitle("My Storage");
         Scene scene = new Scene(root);
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -27,7 +25,4 @@ public class MainClient extends Application {
         launch(args);
     }
 
-    private static void logIt(String logText) {
-        logger.log(Level.SEVERE, logText);
-    }
 }

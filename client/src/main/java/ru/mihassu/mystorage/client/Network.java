@@ -49,7 +49,7 @@ public class Network {
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             socketChannel
                                     .pipeline()
-                                    .addLast(new ClientFileReceiverHandler(callOnAcceptData, () -> getServerFiles()));
+                                    .addLast(new ClientFileReceiverHandler(callOnAcceptData, (userId) -> getServerFiles((int) userId)));
                             channel = socketChannel;
                         }
                     })
@@ -69,9 +69,13 @@ public class Network {
         }
     }
 
-    public void sendFile(Path path) {
+    public void sendFile(Path path, int userId) {
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+
+        sendTestByte(buf, Constants.UPLOAD_FILE);
+        sendInt(buf, userId);
         try {
-            FileSender.sendFile(path, channel, Constants.UPLOAD_FILE, channelFuture -> {
+            FileSender.sendFile(path, channel, channelFuture -> {
                 if (channelFuture.isSuccess()) {
                     logIt("Файл отправлен на сервер");
                 } else {
@@ -85,34 +89,33 @@ public class Network {
     }
 
 
-    public void downloadFile(String name) {
+    public void downloadFile(String name, int userId) {
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
         sendTestByte(buf, Constants.DOWNLOAD_FILE);
-        sendNameLength(buf, name.length());
+        sendInt(buf, userId);
+        sendInt(buf, name.length());
         sendFileName(buf, name);
     }
 
-
-
-
-    public void deleteServerFile(String name) {
+    public void deleteServerFile(String name, int userId) {
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
         sendTestByte(buf, Constants.DELETE_FILE);
-        sendNameLength(buf, name.length());
+
+        sendInt(buf, name.length());
         sendFileName(buf, name);
     }
 
-
-    public void getServerFiles() {
+    public void getServerFiles(int userId) {
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
         sendTestByte(buf, Constants.REQUEST_FILES_LIST);
+        sendInt(buf, userId);
     }
 
     public void sendAuth(String login, String password) {
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
         String loginPass = login + "/" + password;
         sendTestByte(buf, Constants.AUTH);
-        sendNameLength(buf, loginPass.length());
+        sendInt(buf, loginPass.length());
         sendFileName(buf, loginPass);
     }
 
@@ -123,8 +126,8 @@ public class Network {
         channel.writeAndFlush(buf);
     }
 
-    //отправить длину имени файла
-    public void sendNameLength(ByteBuf buf, int nameLength) {
+    //отправить int
+    public void sendInt(ByteBuf buf, int nameLength) {
         buf = ByteBufAllocator.DEFAULT.directBuffer(4);
         buf.writeInt(nameLength);
         channel.writeAndFlush(buf);

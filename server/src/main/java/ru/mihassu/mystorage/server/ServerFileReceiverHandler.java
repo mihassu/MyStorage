@@ -1,6 +1,5 @@
 package ru.mihassu.mystorage.server;
 
-import com.sun.org.apache.xerces.internal.impl.xpath.XPath;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
@@ -31,7 +30,9 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private boolean downLoadActive = false;
     private boolean authActive = false;
     private DbAuthService authService;
-    private String nick;
+    private String currentNick;
+    private int currentUserId;
+    private String currentDir;
 
     public ServerFileReceiverHandler(DbAuthService authService) {
         this.authService = authService;
@@ -50,11 +51,11 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                 System.out.println("ServerFileReceiverHandler - testByte: " + testByte);
                 if (testByte == Constants.UPLOAD_FILE) {
                     loadActive = true;
-                    currentState = State.LOAD_FILE;
+                    currentState = State.ID;
 
                 } else if (testByte == Constants.DOWNLOAD_FILE) {
                     downLoadActive = true;
-                    currentState = State.NAME_LENGTH;
+                    currentState = State.ID;
 
                 } else if (testByte == Constants.REQUEST_FILES_LIST) {
                     currentState = State.REQUEST_FILES_LIST;
@@ -75,26 +76,49 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             }
 
             if (loadActive) {
-                try {
-                    FileReceiver.receiveFile(buf, Constants.serverDir, () -> {
+                if (currentState == State.ID) {
+                    if (buf.readableBytes() >= 4) {
+                        currentUserId = buf.readInt();
+                        currentNick = authService.getNicknameById(currentUserId);
+                        currentDir = Constants.serverDir + currentNick + "/"; // server-storage/userA/
+                        currentState = State.LOAD_FILE;
+                    }
+                }
+
+                if (currentState == State.LOAD_FILE) {
+                    try {
+                        FileReceiver.receiveFile(buf, currentDir, () -> {
+                            loadActive = false;
+                            currentState = State.IDLE;
+                            sendServerFilesList(ctx, currentNick);
+                            System.out.println("success() - сервер получил файл");
+                        });
+                    } catch (Exception e) {
+                        System.out.println("Ошибка при получении файла сервером: " + e.getMessage());
                         loadActive = false;
                         currentState = State.IDLE;
-                        sendServerFilesList(ctx);
-                        System.out.println("success() - сервер получил файл");
-                    });
-                } catch (Exception e) {
-                    System.out.println("Ошибка при получении файла сервером: " + e.getMessage());
-                    loadActive = false;
-                    currentState = State.IDLE;
+                    }
                 }
             }
 
             if (downLoadActive) {
-                readFileName(buf, (name) -> {
-                    ctx.fireChannelRead(name);
-                    downLoadActive = false;
-                    currentState = State.IDLE;
-                });
+                if (currentState == State.ID) {
+                    if (buf.readableBytes() >= 4) {
+                        currentUserId = buf.readInt();
+                        currentNick = authService.getNicknameById(currentUserId);
+                        currentDir = Constants.serverDir + currentNick; //server-storage/userA
+                        currentState = State.NAME_LENGTH;
+                    }
+                }
+
+                if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
+                    readFileName(buf, (name) -> {
+                        String fileDir = currentDir + "/" + name; //server-storage/userA/name.txt
+                        ctx.fireChannelRead(fileDir);
+                        downLoadActive = false;
+                        currentState = State.IDLE;
+                    });
+                }
             }
 
             if (deleteActive) {
@@ -103,7 +127,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                         Files.delete(Paths.get(Constants.serverDir + name));
                         deleteActive = false;
                         currentState = State.IDLE;
-                        sendServerFilesList(ctx);
+                        sendServerFilesList(ctx, currentNick);
                         System.out.println("success() - файл удален");
                     } catch (IOException e) {
                         System.out.println("Ошибка при удалении файла с сервера: " + e.getMessage());
@@ -118,9 +142,11 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     String[] lp = ((String)loginPass).split("/");
                     System.out.println("ServerFileReceiverHandler - логин: " + lp[0]);
                     System.out.println("ServerFileReceiverHandler - пароль: " + lp[1]);
-                    nick = authService.getNicknameByLoginPass(lp[0], lp[1]);
-                    if (nick != null) {
-                        confirmAuth(ctx, nick);
+                    currentNick = authService.getNicknameByLoginPass(lp[0], lp[1]);
+                    currentUserId = authService.getIdByLoginPass(lp[0], lp[1]);
+                    if (currentNick != null) {
+                        confirmAuth(ctx, currentNick, currentUserId);
+                        createUserDirectory(currentNick);
 
                     } else {
                         sendTestByte(ctx, buf, Constants.AUTH_FAIL);
@@ -132,8 +158,12 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
             //отправить список файлов на сервере
             if (currentState == State.REQUEST_FILES_LIST) {
-                sendServerFilesList(ctx);
-                currentState = State.IDLE;
+                if (buf.readableBytes() >= 4) {
+                    currentUserId = buf.readInt();
+                    currentNick = authService.getNicknameById(currentUserId);
+                    sendServerFilesList(ctx, currentNick);
+                    currentState = State.IDLE;
+                }
             }
         }
 
@@ -169,17 +199,29 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         ctx.close();
     }
 
-    private void confirmAuth(ChannelHandlerContext ctx, String nick) {
+    private void confirmAuth(ChannelHandlerContext ctx, String nick, int userId) {
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
         sendTestByte(ctx, buf, Constants.AUTH);
         sendInt(ctx, buf, nick.length());
         sendBytes(ctx, buf, nick.getBytes(StandardCharsets.UTF_8));
+        sendInt(ctx, buf, userId);
     }
 
-    private void sendServerFilesList(ChannelHandlerContext ctx) {
+    private void createUserDirectory(String userName) {
+        Path path = Paths.get(Constants.serverDir + userName);
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectory(path);
+            }
+        } catch (IOException e) {
+            System.out.println("ServerFileReceiverHandler - Ошибка при создании папки: " + e.getMessage());
+        }
+    }
+
+    private void sendServerFilesList(ChannelHandlerContext ctx, String nick) {
         serverFilesCount = 0;
         serverFileLength = 0;
-        List<byte[]> severFiles = getFilesList();
+        List<byte[]> severFiles = getFilesList(nick);
         serverFilesCount = severFiles.size();
 
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
@@ -224,10 +266,10 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         ctx.channel().writeAndFlush(buf);
     }
 
-    private List<byte[]> getFilesList() {
+    private List<byte[]> getFilesList(String nick) {
         List<byte[]> files = new ArrayList<>();
         try {
-            files = Files.list(Paths.get(Constants.serverDir))
+            files = Files.list(Paths.get(Constants.serverDir + nick))
                     .map(Path::toFile)
                     .map(File::getName)
                     .map(s -> s.getBytes(StandardCharsets.UTF_8))
