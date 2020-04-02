@@ -30,6 +30,9 @@ public class MainController implements Initializable {
     private boolean authentificated;
     private int userId;
 
+    private MultipleSelectionModel<String> serverSelectionModel;
+    private MultipleSelectionModel<String> clientSelectionModel;
+
     @FXML
     VBox authPanel;
 
@@ -192,15 +195,25 @@ public class MainController implements Initializable {
     }
 
     private void initItemsSelectedListeners() {
-        MultipleSelectionModel<String> clientSelectionModel = clientFilesList.getSelectionModel();
+        clientSelectionModel = clientFilesList.getSelectionModel();
         clientSelectionModel
                 .selectedItemProperty()
-                .addListener((observable, oldValue, newValue) -> fileNameField.setText(Constants.clientDir + newValue));
+                .addListener((observable, oldValue, newValue) -> {
+                    if (newValue != null) {
+                        fileNameField.setText(Constants.clientDir + newValue);
+                        serverSelectionModel.clearSelection();
+                    }
+                });
 
-        MultipleSelectionModel<String> serverSelectionModel = serverFilesList.getSelectionModel();
+        serverSelectionModel = serverFilesList.getSelectionModel();
         serverSelectionModel
                 .selectedItemProperty()
-                .addListener((observable, oldValue, newValue) -> fileNameField.setText(Constants.serverDir + newValue));
+                .addListener((observable, oldValue, newValue) -> {
+                    if (newValue != null) {
+                        fileNameField.setText(Constants.serverDir + newValue);
+                        clientSelectionModel.clearSelection();
+                    }
+                });
     }
 
     private void updateUI(Runnable r) {

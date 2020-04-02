@@ -7,6 +7,7 @@ public interface Constants {
     byte DELETE_FILE = 8; //удалить файл
     byte AUTH = 3;
     byte AUTH_FAIL = 2;
+    byte RENAME_FILE = 5;
 
     String clientDir = "client-storage/";
     String serverDir = "server-storage/";

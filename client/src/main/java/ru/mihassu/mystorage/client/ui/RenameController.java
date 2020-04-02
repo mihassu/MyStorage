@@ -8,14 +8,14 @@ import ru.mihassu.mystorage.common.ProvideDataCallback;
 public class RenameController {
 
 //    private String renameFile;
-    private ProvideDataCallback provideNewFileName;
+    private ProvideDataCallback newFileNameCallback;
 
     @FXML
     TextField newFileNameField;
 
 
     public void onPressRenameBtn(ActionEvent actionEvent) {
-        provideNewFileName.provide(newFileNameField.getText());
+        newFileNameCallback.provide(newFileNameField.getText());
         newFileNameField.getScene().getWindow().hide();
     }
 
@@ -27,7 +27,7 @@ public class RenameController {
 //        this.renameFile = renameFile;
 //    }
 
-    public void setProvideNewFileName(ProvideDataCallback provideNewFileName) {
-        this.provideNewFileName = provideNewFileName;
+    public void setNewFileNameCallback(ProvideDataCallback newFileNameCallback) {
+        this.newFileNameCallback = newFileNameCallback;
     }
 }

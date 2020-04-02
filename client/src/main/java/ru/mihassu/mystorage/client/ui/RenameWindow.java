@@ -13,13 +13,13 @@ public class RenameWindow {
     private Stage stage;
     private RenameController controller;
 
-    public RenameWindow(ProvideDataCallback provideNewFileName) throws IOException {
+    public RenameWindow(ProvideDataCallback newFileNameCallback) throws IOException {
         this.stage = new Stage();
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/rename.fxml"));
         Parent root = fxmlLoader.load();
         Scene scene = new Scene(root);
         controller = fxmlLoader.getController();
-        controller.setProvideNewFileName(provideNewFileName);
+        controller.setNewFileNameCallback(newFileNameCallback);
         stage.setScene(scene);
     }
 

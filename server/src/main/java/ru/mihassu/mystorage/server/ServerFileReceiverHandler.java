@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +30,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private boolean deleteActive = false;
     private boolean downLoadActive = false;
     private boolean authActive = false;
+    private boolean renameActive = false;
     private DbAuthService authService;
     private String currentNick;
     private int currentUserId;
@@ -64,12 +66,14 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     deleteActive = true;
                     currentState = State.ID;
 
+                } else if (testByte == Constants.RENAME_FILE) {
+                    renameActive = true;
+                    currentState = State.ID;
+
                 } else if (testByte == Constants.AUTH) {
                     authActive = true;
                     currentState = State.NAME_LENGTH;
-                }
-
-                else {
+                } else {
                     System.out.println("ERROR: Invalid first byte - " + testByte);
                     break;
                 }
@@ -148,9 +152,38 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                 }
             }
 
+            if (renameActive) {
+                if (currentState == State.ID) {
+                    if (buf.readableBytes() >= 4) {
+                        currentUserId = buf.readInt();
+                        currentNick = authService.getNicknameById(currentUserId);
+                        currentDir = Constants.serverDir + currentNick; //server-storage/userA
+                        currentState = State.NAME_LENGTH;
+                    }
+                }
+
+                if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
+                    readFileName(buf, (name) -> {
+                        String[] oldNew = ((String) name).split("/");
+                        File oldFile = new File(currentDir + "/" + oldNew[0]);
+                        File newFile = new File(currentDir + "/" + oldNew[1]);
+                        if (oldFile.renameTo(newFile)) {
+                            sendServerFilesList(ctx, currentNick);
+                            System.out.println("Файл на сервере переименован");
+
+                        } else {
+                            System.out.println("Ошибка при переименовании файла на сервере");
+                        }
+
+                        renameActive = false;
+                        currentState = State.IDLE;
+                    });
+                }
+            }
+
             if (authActive) {
                 readFileName(buf, loginPass -> {
-                    String[] lp = ((String)loginPass).split("/");
+                    String[] lp = ((String) loginPass).split("/");
                     System.out.println("ServerFileReceiverHandler - логин: " + lp[0]);
                     System.out.println("ServerFileReceiverHandler - пароль: " + lp[1]);
                     currentNick = authService.getNicknameByLoginPass(lp[0], lp[1]);

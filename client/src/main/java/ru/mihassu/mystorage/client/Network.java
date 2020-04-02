@@ -105,8 +105,13 @@ public class Network {
         sendFileName(buf, name);
     }
 
-    public void renameServerFile(String fileName, String newFileName, int userId) {
-
+    public void renameServerFile(String oldFileName, String newFileName, int userId) {
+        String oldNewName = oldFileName + "/" + newFileName;
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        sendTestByte(buf, Constants.RENAME_FILE);
+        sendInt(buf, userId);
+        sendInt(buf, oldNewName.length());
+        sendFileName(buf, oldNewName);
     }
 
     public void getServerFiles(int userId) {
