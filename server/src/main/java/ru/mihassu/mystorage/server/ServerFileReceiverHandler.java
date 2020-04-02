@@ -62,7 +62,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
                 } else if (testByte == Constants.DELETE_FILE) {
                     deleteActive = true;
-                    currentState = State.NAME_LENGTH;
+                    currentState = State.ID;
 
                 } else if (testByte == Constants.AUTH) {
                     authActive = true;
@@ -122,19 +122,30 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             }
 
             if (deleteActive) {
-                readFileName(buf, (name) -> {
-                    try {
-                        Files.delete(Paths.get(Constants.serverDir + name));
-                        deleteActive = false;
-                        currentState = State.IDLE;
-                        sendServerFilesList(ctx, currentNick);
-                        System.out.println("success() - файл удален");
-                    } catch (IOException e) {
-                        System.out.println("Ошибка при удалении файла с сервера: " + e.getMessage());
-                        deleteActive = false;
-                        currentState = State.IDLE;
+                if (currentState == State.ID) {
+                    if (buf.readableBytes() >= 4) {
+                        currentUserId = buf.readInt();
+                        currentNick = authService.getNicknameById(currentUserId);
+                        currentDir = Constants.serverDir + currentNick; //server-storage/userA
+                        currentState = State.NAME_LENGTH;
                     }
-                });
+                }
+
+                if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
+                    readFileName(buf, (name) -> {
+                        try {
+                            Files.delete(Paths.get(currentDir + "/" + name));
+                            deleteActive = false;
+                            currentState = State.IDLE;
+                            sendServerFilesList(ctx, currentNick);
+                            System.out.println("success() - файл на сервере удален");
+                        } catch (IOException e) {
+                            System.out.println("Ошибка при удалении файла с сервера: " + e.getMessage());
+                            deleteActive = false;
+                            currentState = State.IDLE;
+                        }
+                    });
+                }
             }
 
             if (authActive) {

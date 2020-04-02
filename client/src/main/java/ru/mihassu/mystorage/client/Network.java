@@ -100,9 +100,13 @@ public class Network {
     public void deleteServerFile(String name, int userId) {
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
         sendTestByte(buf, Constants.DELETE_FILE);
-
+        sendInt(buf, userId);
         sendInt(buf, name.length());
         sendFileName(buf, name);
+    }
+
+    public void renameServerFile(String fileName, String newFileName, int userId) {
+
     }
 
     public void getServerFiles(int userId) {

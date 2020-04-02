@@ -1,4 +1,4 @@
-package ru.mihassu.mystorage.client;
+package ru.mihassu.mystorage.client.ui;
 
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -10,8 +10,10 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import ru.mihassu.mystorage.client.Network;
 import ru.mihassu.mystorage.common.Constants;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -155,6 +157,30 @@ public class MainController implements Initializable {
         setAuthentificated(false);
     }
 
+    public void onPressRenameBtn(ActionEvent actionEvent) {
+        try {
+            new RenameWindow(newFileName -> {
+                String[] path = fileNameField.getText().split("/");
+                switch (path[0]) {
+                    case "server-storage":
+                        Network.getInstance().renameServerFile(path[1], (String) newFileName, userId);
+                        break;
+                    case "client-storage":
+                        File file = new File(fileNameField.getText());
+                        File newFile = new File(Constants.clientDir + newFileName);
+                        if (file.renameTo(newFile)) {
+                            System.out.println("Файл на клиенте переименован");
+                        }
+                        refreshClientList(clientFilesList, Constants.clientDir);
+                        break;
+                }
+
+            }).setTitle(fileNameField.getText()).show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void setAuthentificated(boolean authentificated) {
         this.authentificated = authentificated;
         authPanel.setVisible(!authentificated); // панель с логин паролем
@@ -188,7 +214,6 @@ public class MainController implements Initializable {
     private static void logIt(String logText) {
         logger.log(Level.SEVERE, logText);
     }
-
 
 
 }
