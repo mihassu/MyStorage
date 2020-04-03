@@ -28,6 +28,7 @@
             <Button maxWidth="160.0" onAction="#onPressDownloadBtn" text="Скачать с сервера" />
             <Button maxWidth="160.0" onAction="#onPressDeletedBtn" text="Удалить" />
             <Button maxWidth="160.0" onAction="#onPressRenameBtn" text="Переименовать" />
+            <Button maxWidth="160.0" onAction="#onPressRefreshBtn" text="Обновить" />
             <Button maxWidth="160.0" onAction="#onPressDisconnectBtn" text="Отключиться" />
         </VBox>
 

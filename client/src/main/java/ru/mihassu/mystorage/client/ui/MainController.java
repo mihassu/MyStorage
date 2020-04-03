@@ -84,7 +84,7 @@ public class MainController implements Initializable {
     private void initFilesTable(TableView<FileInfo> tableView) {
         TableColumn<FileInfo, String> fileNameColumn = new TableColumn<>("Имя файла");
         fileNameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
-        fileNameColumn.setPrefWidth(200.0);
+        fileNameColumn.setPrefWidth(220.0);
 
         TableColumn<FileInfo, String> fileSizeColumn = new TableColumn<>("Размер файла");
         fileSizeColumn.setCellValueFactory(param -> {
@@ -172,6 +172,8 @@ public class MainController implements Initializable {
 
     public void onPressDisconnectBtn(ActionEvent actionEvent) {
         setAuthentificated(false);
+        serverTableView.getColumns().clear();
+        clientTableView.getColumns().clear();
     }
 
     public void onPressRenameBtn(ActionEvent actionEvent) {
@@ -196,6 +198,11 @@ public class MainController implements Initializable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+
+    public void onPressRefreshBtn(ActionEvent actionEvent) {
+        Network.getInstance().getServerFiles(userId);
     }
 
     public void setAuthentificated(boolean authentificated) {
