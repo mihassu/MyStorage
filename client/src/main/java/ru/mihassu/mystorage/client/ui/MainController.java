@@ -129,7 +129,7 @@ public class MainController implements Initializable {
             if (path[0].equals("client-storage")) {
                 Network.getInstance().sendFile(Paths.get(fileNameField.getText()), userId);
             } else {
-                System.out.println("Выберите файл на клиенте");
+                showAlert("Выберите файл на клиенте");
             }
             fileNameField.clear();
         }
@@ -141,7 +141,7 @@ public class MainController implements Initializable {
             if (path[0].equals("server-storage")) {
                 Network.getInstance().downloadFile(path[1], userId);
             } else {
-                System.out.println("Выберите файл на сервере");
+                showAlert("Выберите файл на сервере");
             }
             fileNameField.clear();
         }
@@ -229,6 +229,13 @@ public class MainController implements Initializable {
                     }
                 });
 
+    }
+
+    private void showAlert(String text) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setContentText(text);
+        alert.setHeaderText(null);
+        alert.showAndWait();
     }
 
     private void updateUI(Runnable r) {
