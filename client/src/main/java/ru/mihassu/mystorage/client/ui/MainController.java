@@ -1,13 +1,12 @@
 package ru.mihassu.mystorage.client.ui;
 
 import javafx.application.Platform;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.ListView;
-import javafx.scene.control.MultipleSelectionModel;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import ru.mihassu.mystorage.client.Network;
@@ -23,6 +22,7 @@ import java.util.ResourceBundle;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class MainController implements Initializable {
 
@@ -30,8 +30,8 @@ public class MainController implements Initializable {
     private boolean authentificated;
     private int userId;
 
-    private MultipleSelectionModel<String> serverSelectionModel;
-    private MultipleSelectionModel<String> clientSelectionModel;
+    private TableView.TableViewSelectionModel<FileInfo> serverSelectionModel;
+    private TableView.TableViewSelectionModel<FileInfo> clientSelectionModel;
 
     @FXML
     VBox authPanel;
@@ -46,27 +46,27 @@ public class MainController implements Initializable {
     PasswordField passField;
 
     @FXML
-    ListView<String> clientFilesList, serverFilesList;
+    TableView<FileInfo> serverTableView, clientTableView;
 
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setAuthentificated(false);
-        Network.getInstance().setCallOnAcceptData((filesNames, nick, userId) -> {
-            if (filesNames == null && nick == null) {
+        Network.getInstance().setCallOnAcceptData((serverFiles, nick, userId) -> {
+            if (serverFiles == null && nick == null) {
                 System.out.println("Не удалось авторизоваться");
 
-            } else if (filesNames != null) {
-                refreshClientList(clientFilesList, Constants.clientDir);
-                refreshServerList(filesNames);
-//            logIt("Callback - refresh");
+            } else if (serverFiles != null) {
+                refreshClientList(Constants.clientDir);
+                refreshServerList(serverFiles);
 
             } else {
                 setAuthentificated(true);
+                initFilesTable(serverTableView);
+                initFilesTable(clientTableView);
                 nickField.setText(nick);
                 this.userId = userId;
-                //обновить списки на сервере и на клиенте
-                Network.getInstance().getServerFiles(userId);
+                Network.getInstance().getServerFiles(userId); //обновить списки на сервере и на клиенте
                 initItemsSelectedListeners();
                 System.out.println("Авторизация выполнена. Ник: " + nick);
             }
@@ -79,30 +79,44 @@ public class MainController implements Initializable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
     }
 
-    private void refreshServerList(List<String> filesNames) {
-        Platform.runLater(() -> {
-            serverFilesList.getItems().clear();
-            if (filesNames.size() > 0) {
-                for (String f : filesNames) {
-                    serverFilesList.getItems().add(f);
-                }
-            } else {
-                serverFilesList.getItems().add("Пусто");
-            }
+    private void initFilesTable(TableView<FileInfo> tableView) {
+        TableColumn<FileInfo, String> fileNameColumn = new TableColumn<>("Имя файла");
+        fileNameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+        fileNameColumn.setPrefWidth(200.0);
+
+        TableColumn<FileInfo, String> fileSizeColumn = new TableColumn<>("Размер файла");
+        fileSizeColumn.setCellValueFactory(param -> {
+            long size = param.getValue().getSize();
+            return new ReadOnlyObjectWrapper<>(String.valueOf(size) + " байт");
         });
+        fileSizeColumn.setPrefWidth(100.0);
+
+        Platform.runLater(() -> tableView.getColumns().addAll(fileNameColumn, fileSizeColumn));
     }
 
-    private void refreshClientList(ListView<String> filesList, String dir) {
+    private void refreshServerList(List<FileInfo> serverFiles) {
+        Platform.runLater(() -> serverTableView.getItems().setAll(serverFiles));
+    }
+
+    private void refreshClientList(String dir) {
+
         Platform.runLater(() -> {
             try {
-                filesList.getItems().clear();
-                Files
-                        .list(Paths.get(dir)) //List<Path>
-                        .map(path -> path.getFileName().toString()) //List<String>
-                        .forEach(fileName -> filesList.getItems().add(fileName));
+                List<FileInfo> fileInfoList =
+                        Files.list(Paths.get(dir)) //List<Path>
+                                .map(path -> {
+                                    try {
+                                        return new FileInfo(path.getFileName().toString(), Files.size(path));
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                    return null;
+                                })
+                                .collect(Collectors.toList());
+                clientTableView.getItems().setAll(fileInfoList);
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -145,7 +159,7 @@ public class MainController implements Initializable {
                 } catch (IOException e) {
                     System.out.println("Ошибка при удалении файла на клиенте: " + e.getMessage());
                 }
-                refreshClientList(clientFilesList, Constants.clientDir);
+                refreshClientList(Constants.clientDir);
                 break;
         }
     }
@@ -174,7 +188,7 @@ public class MainController implements Initializable {
                         if (file.renameTo(newFile)) {
                             System.out.println("Файл на клиенте переименован");
                         }
-                        refreshClientList(clientFilesList, Constants.clientDir);
+                        refreshClientList(Constants.clientDir);
                         break;
                 }
 
@@ -195,25 +209,26 @@ public class MainController implements Initializable {
     }
 
     private void initItemsSelectedListeners() {
-        clientSelectionModel = clientFilesList.getSelectionModel();
+        clientSelectionModel = clientTableView.getSelectionModel();
         clientSelectionModel
                 .selectedItemProperty()
                 .addListener((observable, oldValue, newValue) -> {
                     if (newValue != null) {
-                        fileNameField.setText(Constants.clientDir + newValue);
+                        fileNameField.setText(Constants.clientDir + newValue.getName());
                         serverSelectionModel.clearSelection();
                     }
                 });
 
-        serverSelectionModel = serverFilesList.getSelectionModel();
+        serverSelectionModel = serverTableView.getSelectionModel();
         serverSelectionModel
                 .selectedItemProperty()
                 .addListener((observable, oldValue, newValue) -> {
                     if (newValue != null) {
-                        fileNameField.setText(Constants.serverDir + newValue);
+                        fileNameField.setText(Constants.serverDir + newValue.getName());
                         clientSelectionModel.clearSelection();
                     }
                 });
+
     }
 
     private void updateUI(Runnable r) {

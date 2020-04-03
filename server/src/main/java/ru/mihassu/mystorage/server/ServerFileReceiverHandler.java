@@ -26,6 +26,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private String fileName;
     private int serverFilesCount;
     private int serverFileLength;
+    private long serverFileSize;
     private boolean loadActive = false;
     private boolean deleteActive = false;
     private boolean downLoadActive = false;
@@ -247,7 +248,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
         sendTestByte(ctx, buf, Constants.AUTH);
         sendInt(ctx, buf, nick.length());
-        sendBytes(ctx, buf, nick.getBytes(StandardCharsets.UTF_8));
+        sendBytes(ctx, buf, nick);
         sendInt(ctx, buf, userId);
     }
 
@@ -265,7 +266,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private void sendServerFilesList(ChannelHandlerContext ctx, String nick) {
         serverFilesCount = 0;
         serverFileLength = 0;
-        List<byte[]> severFiles = getFilesList(nick);
+        List<Path> severFiles = getFilesList(nick);
         serverFilesCount = severFiles.size();
 
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
@@ -279,11 +280,25 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         for (int i = 0; i < serverFilesCount; i++) {
 
             //отправить длину имени файла
-            serverFileLength = severFiles.get(i).length;
+            serverFileLength = severFiles.get(i).toFile().getName().length();
+            System.out.println("ServerFileReceiverHandler - Длина имени файла: " + serverFileLength);
             sendInt(ctx, buf, serverFileLength);
 
             //отправить имя файла
-            sendBytes(ctx, buf, severFiles.get(i));
+            fileName = severFiles.get(i).toFile().getName();
+            System.out.println("ServerFileReceiverHandler - Имя файла: " + fileName);
+            sendBytes(ctx, buf, fileName);
+
+            //отправить размер файла
+            try {
+                serverFileSize = Files.size(severFiles.get(i));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            System.out.println("ServerFileReceiverHandler - Размер файла: " + serverFileSize);
+            buf = ByteBufAllocator.DEFAULT.directBuffer(8);
+            buf.writeLong(serverFileSize);
+            ctx.channel().writeAndFlush(buf);
         }
         System.out.println("ServerFileReceiverHandler - Передано количество файлов на сервере: " + serverFilesCount);
 
@@ -300,23 +315,24 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     public void sendInt(ChannelHandlerContext ctx, ByteBuf buf, int nameLength) {
         buf = ByteBufAllocator.DEFAULT.directBuffer(4);
         buf.writeInt(nameLength);
-        ctx.pipeline().writeAndFlush(buf);
-    }
-
-    //отправить bytes
-    private void sendBytes(ChannelHandlerContext ctx, ByteBuf buf, byte[] bytes) {
-        buf = ByteBufAllocator.DEFAULT.directBuffer(bytes.length);
-        buf.writeBytes(bytes);
         ctx.channel().writeAndFlush(buf);
     }
 
-    private List<byte[]> getFilesList(String nick) {
-        List<byte[]> files = new ArrayList<>();
+    //отправить bytes
+    private void sendBytes(ChannelHandlerContext ctx, ByteBuf buf, String name) {
+        byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
+        buf = ByteBufAllocator.DEFAULT.directBuffer(nameBytes.length);
+        buf.writeBytes(nameBytes);
+        ctx.channel().writeAndFlush(buf);
+    }
+
+    private List<Path> getFilesList(String nick) {
+        List<Path> files = new ArrayList<>();
         try {
             files = Files.list(Paths.get(Constants.serverDir + nick))
-                    .map(Path::toFile)
-                    .map(File::getName)
-                    .map(s -> s.getBytes(StandardCharsets.UTF_8))
+//                    .map(Path::toFile)
+//                    .map(File::getName)
+//                    .map(s -> s.getBytes(StandardCharsets.UTF_8))
                     .collect(Collectors.toList());
 
         } catch (IOException e) {

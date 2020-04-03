@@ -25,11 +25,6 @@ public class RenameWindow {
 
     public Stage setTitle(String title) {
         stage.setTitle(title);
-//        controller.setRenameFile(title);
         return stage;
     }
-
-//    public void show() {
-//        stage.show();
-//    }
 }

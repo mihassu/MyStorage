@@ -3,6 +3,7 @@ package ru.mihassu.mystorage.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import ru.mihassu.mystorage.client.ui.FileInfo;
 import ru.mihassu.mystorage.common.*;
 
 import java.util.ArrayList;
@@ -15,9 +16,10 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private int receivedfiles;
     private String fileName;
     private int fileNameLength;
+    private long fileSize;
     private String nick;
     private int userId;
-    private List<String> filesNames = new ArrayList<>();
+    private List<FileInfo> serverFiles = new ArrayList<>();
     private HandlerOperationCallback callOnAcceptData;
     private ProvideDataCallback fileReceived;
     private boolean loadActive = false;
@@ -43,7 +45,7 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                 if (testByte == Constants.REQUEST_FILES_LIST) {
                     currentState = State.FILES_COUNT;
                     filesCountActive = true;
-                    filesNames.clear();
+                    serverFiles.clear();
                     receivedfiles = 0;
                     fileNameLength = 0;
 
@@ -107,7 +109,7 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                         currentState = State.NAME_LENGTH;
                         System.out.println("ClientFileReceiverHandler - Количество файлов нв сервере: " + filesCount);
                         if (filesCount == 0) {
-                            callOnAcceptData.provideData(filesNames, null, 0);
+                            callOnAcceptData.provideData(serverFiles, null, 0);
                             filesCountActive = false;
                             currentState = State.IDLE;
                         }
@@ -115,18 +117,33 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                 }
 
                 //Прочитать имя файла
-                readFileName(buf, name -> {
-                    filesNames.add((String) name);
-                    receivedfiles++;
-                    currentState = State.NAME_LENGTH;
-                });
-
-                if (receivedfiles >= filesCount) {
-                    System.out.println("ClientFileReceiverHandler - Файлы на сервере: " + filesNames.toString());
-                    callOnAcceptData.provideData(filesNames, null, 0);
-                    filesCountActive = false;
-                    currentState = State.IDLE;
+                if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
+                    readFileName(buf, name -> {
+                        fileName = (String) name;
+                        currentState = State.FILE_SIZE;
+                        System.out.println("ClientFileReceiverHandler - Имя файла : " + fileName);
+                    });
                 }
+
+                //прочитать размер файла
+                if (currentState == State.FILE_SIZE) {
+                    if (buf.readableBytes() >= 8) {
+                        fileSize = buf.readLong();
+                        System.out.println("ClientFileReceiverHandler - Размер файла : " + fileSize);
+                        receivedfiles++;
+                        serverFiles.add(new FileInfo(fileName, fileSize));
+                        currentState = State.NAME_LENGTH;
+
+                        if (receivedfiles >= filesCount) {
+                            System.out.println("ClientFileReceiverHandler - Файлы на сервере: " + serverFiles.toString());
+                            callOnAcceptData.provideData(serverFiles, null, 0);
+                            filesCountActive = false;
+                            currentState = State.IDLE;
+                        }
+                    }
+                }
+
+
             }
         }
 

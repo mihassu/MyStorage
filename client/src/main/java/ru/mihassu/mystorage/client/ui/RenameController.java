@@ -7,7 +7,6 @@ import ru.mihassu.mystorage.common.ProvideDataCallback;
 
 public class RenameController {
 
-//    private String renameFile;
     private ProvideDataCallback newFileNameCallback;
 
     @FXML
@@ -22,10 +21,6 @@ public class RenameController {
     public void onPressCancelBtn(ActionEvent actionEvent) {
         newFileNameField.getScene().getWindow().hide();
     }
-
-//    public void setRenameFile(String renameFile) {
-//        this.renameFile = renameFile;
-//    }
 
     public void setNewFileNameCallback(ProvideDataCallback newFileNameCallback) {
         this.newFileNameCallback = newFileNameCallback;
