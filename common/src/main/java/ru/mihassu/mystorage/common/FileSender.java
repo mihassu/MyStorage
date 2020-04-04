@@ -28,11 +28,6 @@ public class FileSender {
 
         ByteBuf buf;
 
-//        //отправить контольный байт
-//        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
-//        buf.writeByte(testByte);
-//        channel.writeAndFlush(buf);
-
         //отправить длину имени файла
         buf = ByteBufAllocator.DEFAULT.directBuffer(4);
         buf.writeInt(path.getFileName().toString().length());
@@ -57,7 +52,6 @@ public class FileSender {
         if (channelFutureListener != null) {
             channelFuture.addListener(channelFutureListener);
         }
-
     }
 
     private static void logIt(String logText) {
