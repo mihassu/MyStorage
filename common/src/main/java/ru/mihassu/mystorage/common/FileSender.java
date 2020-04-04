@@ -18,6 +18,7 @@ public class FileSender {
 
     public static void sendFile(Path path,
                                 Channel channel,
+//                                byte testByte,
                                 ChannelFutureListener channelFutureListener) throws IOException {
 
         FileRegion region = new DefaultFileRegion(
@@ -26,11 +27,6 @@ public class FileSender {
                 Files.size(path));
 
         ByteBuf buf;
-
-        //отправить контольный байт
-        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
-        buf.writeByte(Constants.UPLOAD_FILE);
-        channel.writeAndFlush(buf);
 
         //отправить длину имени файла
         buf = ByteBufAllocator.DEFAULT.directBuffer(4);
@@ -56,7 +52,6 @@ public class FileSender {
         if (channelFutureListener != null) {
             channelFuture.addListener(channelFutureListener);
         }
-
     }
 
     private static void logIt(String logText) {

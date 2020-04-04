@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox alignment="CENTER" prefHeight="100.0" prefWidth="350.0" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.mihassu.mystorage.client.ui.RenameController">
+
+    <TextField fx:id="newFileNameField" alignment="CENTER" prefWidth="180.0" focusTraversable="false" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" promptText="Новое имя" />
+
+    <HBox alignment="BOTTOM_CENTER">
+            <Button onAction="#onPressRenameBtn" text="Переименовать" />
+            <Button onAction="#onPressCancelBtn" text="Отмена" />
+    </HBox>
+</VBox>

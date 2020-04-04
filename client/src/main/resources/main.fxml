@@ -2,18 +2,45 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
 
-<VBox fx:id="rootNode" alignment="CENTER" prefHeight="400.0" prefWidth="600.0" style="-fx-background-color: linear-gradient(#fff 0%, #eee 10%, #ddd 90%, #bbb 100%);" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.mihassu.mystorage.MainController">
-    <TextField fx:id="fileNameField" focusTraversable="false" alignment="CENTER" editable="false"/>
+<VBox fx:id="rootNode" alignment="CENTER" prefHeight="600.0" prefWidth="800.0" style="-fx-background-color: linear-gradient(#fff 0%, #eee 10%, #ddd 90%, #bbb 100%);" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.mihassu.mystorage.client.ui.MainController">
 
-    <HBox>
-        <ListView fx:id="clientFilesList" VBox.vgrow="ALWAYS" />
+    <VBox fx:id="authPanel" alignment="CENTER">
+        <TextField fx:id="loginField" alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" promptText="Логин" />
+        <PasswordField fx:id="passField" alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" onAction="#onPressAuthBtn" promptText="Пароль" />
+        <Button onAction="#onPressAuthBtn" text="Соединение" />
+    </VBox>
 
+    <TextField fx:id="nickField" alignment="TOP_CENTER" editable="false" focusTraversable="false" />
+
+    <HBox fx:id="workPanel" alignment="TOP_CENTER" VBox.vgrow="ALWAYS">
+        <VBox alignment="CENTER" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+            <Label text="Клиент">
+            <font>
+               <Font size="18.0" />
+            </font></Label>
+            <TableView fx:id="clientTableView" maxWidth="400.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" />
+        </VBox>
         <VBox alignment="TOP_CENTER" HBox.hgrow="ALWAYS">
-            <Button onAction="#onPressUploadBtn" text="Загрузить на сервер" />
-            <Button onAction="#onPressDownloadBtn" text="Скачать с сервера" />
+            <TextField fx:id="fileNameField" editable="false" maxWidth="160.0" />
+            <Button maxWidth="160.0" onAction="#onPressUploadBtn" text="Загрузить на сервер" />
+            <Button maxWidth="160.0" onAction="#onPressDownloadBtn" text="Скачать с сервера" />
+            <Button maxWidth="160.0" onAction="#onPressDeletedBtn" text="Удалить" />
+            <Button maxWidth="160.0" onAction="#onPressRenameBtn" text="Переименовать" />
+            <Button maxWidth="160.0" onAction="#onPressRefreshBtn" text="Обновить" />
+            <Button maxWidth="160.0" onAction="#onPressDisconnectBtn" text="Отключиться" />
         </VBox>
 
-        <ListView fx:id="serverFilesList" VBox.vgrow="ALWAYS" />
+        <VBox alignment="CENTER" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+            <Label text="Сервер">
+            <font>
+               <Font size="18.0" />
+            </font></Label>
+            <TableView fx:id="serverTableView" maxWidth="400.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" />
+        </VBox>
+
+
+
     </HBox>
 </VBox>
