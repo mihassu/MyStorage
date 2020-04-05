@@ -9,8 +9,13 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.serialization.ObjectDecoder;
+import ru.mihassu.mystorage.common.Constants;
 import ru.mihassu.mystorage.server.db.DbAuthService;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 
 public class Server {
@@ -37,6 +42,8 @@ public class Server {
             System.out.println("Ошибка при подключениие к базе данных: " + e.getMessage());
         }
 
+        createServerDirectory();
+
         try {
             ChannelFuture future = new ServerBootstrap()
                     .group(bossGroup, workGroup)
@@ -60,7 +67,16 @@ public class Server {
             bossGroup.shutdownGracefully();
             System.out.println("Server - finally()");
         }
+    }
 
-
+    private void createServerDirectory() {
+        Path path = Paths.get(Constants.serverDir);
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectory(path);
+            }
+        } catch (IOException e) {
+            System.out.println("Ошибка при создании папки: " + e.getMessage());
+        }
     }
 }

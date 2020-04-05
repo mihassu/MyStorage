@@ -9,7 +9,7 @@ public interface Constants {
     byte AUTH_FAIL = 2;
     byte RENAME_FILE = 5;
 
-    String clientDir = "client-storage/";
-    String serverDir = "server-storage/";
+    String clientDir = "client-storage";
+    String serverDir = "server-storage";
 
 }
