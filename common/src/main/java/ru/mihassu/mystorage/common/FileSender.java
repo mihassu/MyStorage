@@ -18,7 +18,6 @@ public class FileSender {
 
     public static void sendFile(Path path,
                                 Channel channel,
-//                                byte testByte,
                                 ChannelFutureListener channelFutureListener) throws IOException {
 
         FileRegion region = new DefaultFileRegion(

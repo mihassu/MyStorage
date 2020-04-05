@@ -38,7 +38,7 @@ public class FileReceiver {
         if (currentState == State.NAME) {
             if (buf.readableBytes() >= fileNameLength) {
                 fileName = readFileNameFromBytes(buf, fileNameLength);
-                file = new File(dir + fileName);
+                file = new File(dir + "/" + fileName);
                 out = new BufferedOutputStream(new FileOutputStream(file));
                 currentState = State.FILE_SIZE;
                 System.out.println("FileReceiver - file: " + file.getName());
@@ -69,6 +69,8 @@ public class FileReceiver {
                 }
             } catch (IOException e) {
                 System.out.println(e.getCause().getMessage());
+                currentState = State.IDLE;
+                out.close();
             }
         }
     }

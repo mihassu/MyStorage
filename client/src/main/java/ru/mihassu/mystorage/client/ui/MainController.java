@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -68,6 +69,7 @@ public class MainController implements Initializable {
                 this.userId = userId;
                 Network.getInstance().getServerFiles(userId); //обновить списки на сервере и на клиенте
                 initItemsSelectedListeners();
+                createClientDirectory();
                 System.out.println("Авторизация выполнена. Ник: " + nick);
             }
         });
@@ -126,7 +128,7 @@ public class MainController implements Initializable {
     public void onPressUploadBtn(ActionEvent actionEvent) {
         if (fileNameField.getLength() > 0) {
             String[] path = fileNameField.getText().split("/");
-            if (path[0].equals("client-storage")) {
+            if (path[0].equals(Constants.clientDir)) {
                 Network.getInstance().sendFile(Paths.get(fileNameField.getText()), userId);
             } else {
                 showAlert("Выберите файл на клиенте");
@@ -138,7 +140,7 @@ public class MainController implements Initializable {
     public void onPressDownloadBtn(ActionEvent actionEvent) {
         if (fileNameField.getText().length() > 0) {
             String[] path = fileNameField.getText().split("/");
-            if (path[0].equals("server-storage")) {
+            if (path[0].equals(Constants.serverDir)) {
                 Network.getInstance().downloadFile(path[1], userId);
             } else {
                 showAlert("Выберите файл на сервере");
@@ -150,10 +152,10 @@ public class MainController implements Initializable {
     public void onPressDeletedBtn(ActionEvent actionEvent) {
         String[] path = fileNameField.getText().split("/");
         switch (path[0]) {
-            case "server-storage":
+            case Constants.serverDir:
                 Network.getInstance().deleteServerFile(path[1], userId);
                 break;
-            case "client-storage":
+            case Constants.clientDir:
                 try {
                     Files.delete(Paths.get(fileNameField.getText()));
                 } catch (IOException e) {
@@ -181,12 +183,12 @@ public class MainController implements Initializable {
             new RenameWindow(newFileName -> {
                 String[] path = fileNameField.getText().split("/");
                 switch (path[0]) {
-                    case "server-storage":
+                    case Constants.serverDir:
                         Network.getInstance().renameServerFile(path[1], (String) newFileName, userId);
                         break;
-                    case "client-storage":
+                    case Constants.clientDir:
                         File file = new File(fileNameField.getText());
-                        File newFile = new File(Constants.clientDir + newFileName);
+                        File newFile = new File(Constants.clientDir + "/" + newFileName);
                         if (file.renameTo(newFile)) {
                             System.out.println("Файл на клиенте переименован");
                         }
@@ -221,7 +223,7 @@ public class MainController implements Initializable {
                 .selectedItemProperty()
                 .addListener((observable, oldValue, newValue) -> {
                     if (newValue != null) {
-                        fileNameField.setText(Constants.clientDir + newValue.getName());
+                        fileNameField.setText(Constants.clientDir + "/" + newValue.getName());
                         serverSelectionModel.clearSelection();
                     }
                 });
@@ -231,11 +233,21 @@ public class MainController implements Initializable {
                 .selectedItemProperty()
                 .addListener((observable, oldValue, newValue) -> {
                     if (newValue != null) {
-                        fileNameField.setText(Constants.serverDir + newValue.getName());
+                        fileNameField.setText(Constants.serverDir + "/" + newValue.getName());
                         clientSelectionModel.clearSelection();
                     }
                 });
+    }
 
+    private void createClientDirectory() {
+        Path path = Paths.get(Constants.clientDir);
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectory(path);
+            }
+        } catch (IOException e) {
+            System.out.println("Ошибка при создании папки: " + e.getMessage());
+        }
     }
 
     private void showAlert(String text) {
@@ -256,6 +268,5 @@ public class MainController implements Initializable {
     private static void logIt(String logText) {
         logger.log(Level.SEVERE, logText);
     }
-
 
 }

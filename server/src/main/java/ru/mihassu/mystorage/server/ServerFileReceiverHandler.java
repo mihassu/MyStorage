@@ -85,7 +85,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     if (buf.readableBytes() >= 4) {
                         currentUserId = buf.readInt();
                         currentNick = authService.getNicknameById(currentUserId);
-                        currentDir = Constants.serverDir + currentNick + "/"; // server-storage/userA/
+                        currentDir = Constants.serverDir + "/" + currentNick + "/"; // server-storage/userA/
                         currentState = State.LOAD_FILE;
                     }
                 }
@@ -111,7 +111,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     if (buf.readableBytes() >= 4) {
                         currentUserId = buf.readInt();
                         currentNick = authService.getNicknameById(currentUserId);
-                        currentDir = Constants.serverDir + currentNick; //server-storage/userA
+                        currentDir = Constants.serverDir + "/" + currentNick; //server-storage/userA
                         currentState = State.NAME_LENGTH;
                     }
                 }
@@ -131,7 +131,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     if (buf.readableBytes() >= 4) {
                         currentUserId = buf.readInt();
                         currentNick = authService.getNicknameById(currentUserId);
-                        currentDir = Constants.serverDir + currentNick; //server-storage/userA
+                        currentDir = Constants.serverDir + "/" + currentNick; //server-storage/userA
                         currentState = State.NAME_LENGTH;
                     }
                 }
@@ -158,7 +158,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     if (buf.readableBytes() >= 4) {
                         currentUserId = buf.readInt();
                         currentNick = authService.getNicknameById(currentUserId);
-                        currentDir = Constants.serverDir + currentNick; //server-storage/userA
+                        currentDir = Constants.serverDir + "/" + currentNick; //server-storage/userA
                         currentState = State.NAME_LENGTH;
                     }
                 }
@@ -253,7 +253,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     }
 
     private void createUserDirectory(String userName) {
-        Path path = Paths.get(Constants.serverDir + userName);
+        Path path = Paths.get(Constants.serverDir + "/" + userName);
         try {
             if (!Files.exists(path)) {
                 Files.createDirectory(path);
@@ -329,7 +329,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private List<Path> getFilesList(String nick) {
         List<Path> files = new ArrayList<>();
         try {
-            files = Files.list(Paths.get(Constants.serverDir + nick))
+            files = Files.list(Paths.get(Constants.serverDir + "/" + nick))
 //                    .map(Path::toFile)
 //                    .map(File::getName)
 //                    .map(s -> s.getBytes(StandardCharsets.UTF_8))

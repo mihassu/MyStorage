@@ -169,7 +169,6 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
             if (buf.readableBytes() >= fileNameLength) {
                 fileName = FileReceiver.readFileNameFromBytes(buf, fileNameLength);
                 callback.provide(fileName);
-//                currentState = State.IDLE;
             }
         }
     }
