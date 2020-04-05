@@ -69,6 +69,8 @@ public class FileReceiver {
                 }
             } catch (IOException e) {
                 System.out.println(e.getCause().getMessage());
+                currentState = State.IDLE;
+                out.close();
             }
         }
     }
