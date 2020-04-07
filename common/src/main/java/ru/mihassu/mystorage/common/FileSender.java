@@ -14,9 +14,7 @@ import java.util.logging.Logger;
 
 public class FileSender {
 
-    private static Logger logger = Logger.getLogger(FileSender.class.getName());
-
-    public static void sendFile(Path path,
+    public void sendFile(Path path,
                                 Channel channel,
                                 ChannelFutureListener channelFutureListener) throws IOException {
 
@@ -51,9 +49,5 @@ public class FileSender {
         if (channelFutureListener != null) {
             channelFuture.addListener(channelFutureListener);
         }
-    }
-
-    private static void logIt(String logText) {
-        logger.log(Level.SEVERE, logText);
     }
 }

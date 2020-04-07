@@ -10,15 +10,15 @@ import java.nio.charset.StandardCharsets;
 
 public class FileReceiver {
 
-    private static State currentState = State.IDLE;
-    private static BufferedOutputStream out;
-    private static File file;
-    private static int fileNameLength;
-    private static String fileName;
-    private static long fileSize;
-    private static long receivedFileSize;
+    private State currentState = State.IDLE;
+    private BufferedOutputStream out;
+    private File file;
+    private int fileNameLength;
+    private String fileName;
+    private long fileSize;
+    private long receivedFileSize;
 
-    public static void receiveFile(ByteBuf buf, String dir, OperationCompleteCallback fileReceive) throws Exception {
+    public void receiveFile(ByteBuf buf, String dir, OperationCompleteCallback fileReceive) throws Exception {
 
         if (currentState == State.IDLE) {
             receivedFileSize = 0L;

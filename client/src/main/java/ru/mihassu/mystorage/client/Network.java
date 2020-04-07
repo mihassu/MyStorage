@@ -27,6 +27,11 @@ public class Network {
     private static Logger logger = Logger.getLogger(Network.class.getName());
     private HandlerOperationCallback callOnAcceptData;
     private Channel channel;
+    private FileSender fileSender;
+
+    private Network() {
+        this.fileSender = new FileSender();
+    }
 
     public static Network getInstance() {
         return instance;
@@ -74,7 +79,7 @@ public class Network {
 
         sendTestByte(buf, Constants.UPLOAD_FILE);
         try {
-            FileSender.sendFile(path, channel, channelFuture -> {
+            fileSender.sendFile(path, channel, channelFuture -> {
                 if (channelFuture.isSuccess()) {
                     logIt("Файл отправлен на сервер");
                 } else {
@@ -89,7 +94,7 @@ public class Network {
 
 
     public void downloadFile(String name) {
-        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(1 + 4 + name.length());
         buf
                 .writeByte(Constants.DOWNLOAD_FILE)
                 .writeInt(name.length())
@@ -98,7 +103,7 @@ public class Network {
     }
 
     public void deleteServerFile(String name) {
-        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(1 + 4 + name.length());
         buf
                 .writeByte(Constants.DELETE_FILE)
                 .writeInt(name.length())
@@ -108,7 +113,7 @@ public class Network {
 
     public void renameServerFile(String oldFileName, String newFileName) {
         String oldNewName = oldFileName + "/" + newFileName;
-        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(1 + 4 + oldNewName.length());
         buf
                 .writeByte(Constants.RENAME_FILE)
                 .writeInt(oldNewName.length())
@@ -122,8 +127,8 @@ public class Network {
     }
 
     public void sendAuth(String login, String password) {
-        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
         String loginPass = login + "/" + password;
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(1 + 4 + loginPass.length());
         buf
                 .writeByte(Constants.AUTH)
                 .writeInt(loginPass.length())

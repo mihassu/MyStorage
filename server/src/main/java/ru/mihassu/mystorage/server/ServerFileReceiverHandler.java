@@ -1,6 +1,5 @@
 package ru.mihassu.mystorage.server;
 
-import com.sun.xml.internal.bind.api.impl.NameConverter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
@@ -22,6 +21,7 @@ import ru.mihassu.mystorage.server.db.DbAuthService;
 
 public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
+    private FileReceiver fileReceiver;
     private State currentState = State.IDLE;
     private int fileNameLength;
     private String fileName;
@@ -39,6 +39,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
     public ServerFileReceiverHandler(DbAuthService authService) {
         this.authService = authService;
+        this.fileReceiver = new FileReceiver();
     }
 
     @Override
@@ -63,18 +64,18 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
                 } else if (testByte == Constants.DOWNLOAD_FILE) {
                     downLoadActive = true;
-                    currentState= State.NAME_LENGTH;
+                    currentState = State.NAME_LENGTH;
 
                 } else if (testByte == Constants.REQUEST_FILES_LIST) {
                     currentState = State.REQUEST_FILES_LIST;
 
                 } else if (testByte == Constants.DELETE_FILE) {
                     deleteActive = true;
-                    currentState= State.NAME_LENGTH;
+                    currentState = State.NAME_LENGTH;
 
                 } else if (testByte == Constants.RENAME_FILE) {
                     renameActive = true;
-                    currentState= State.NAME_LENGTH;
+                    currentState = State.NAME_LENGTH;
 
                 } else if (testByte == Constants.AUTH) {
                     authActive = true;
@@ -88,7 +89,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             if (loadActive) {
                 if (currentState == State.LOAD_FILE) {
                     try {
-                        FileReceiver.receiveFile(buf, currentDir, () -> {
+                        fileReceiver.receiveFile(buf, currentDir, () -> {
                             loadActive = false;
                             currentState = State.IDLE;
                             sendServerFilesList(ctx);
@@ -103,52 +104,46 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             }
 
             if (downLoadActive) {
-                if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
-                    readFileName(buf, (name) -> {
-                        String fileDir = currentDir + "/" + name; //server-storage/userA/name.txt
-                        ctx.fireChannelRead(fileDir);
-                        downLoadActive = false;
-                        currentState = State.IDLE;
-                    });
-                }
+                readFileName(buf, (name) -> {
+                    String fileDir = currentDir + "/" + name; //server-storage/userA/name.txt
+                    ctx.fireChannelRead(fileDir);
+                    downLoadActive = false;
+                    currentState = State.IDLE;
+                });
             }
 
             if (deleteActive) {
-                if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
-                    readFileName(buf, (name) -> {
-                        try {
-                            Files.delete(Paths.get(currentDir + "/" + name));
-                            deleteActive = false;
-                            currentState = State.IDLE;
-                            sendServerFilesList(ctx);
-                            System.out.println("success() - файл на сервере удален");
-                        } catch (IOException e) {
-                            System.out.println("Ошибка при удалении файла с сервера: " + e.getMessage());
-                            deleteActive = false;
-                            currentState = State.IDLE;
-                        }
-                    });
-                }
+                readFileName(buf, (name) -> {
+                    try {
+                        Files.delete(Paths.get(currentDir + "/" + name));
+                        deleteActive = false;
+                        currentState = State.IDLE;
+                        sendServerFilesList(ctx);
+                        System.out.println("success() - файл на сервере удален");
+                    } catch (IOException e) {
+                        System.out.println("Ошибка при удалении файла с сервера: " + e.getMessage());
+                        deleteActive = false;
+                        currentState = State.IDLE;
+                    }
+                });
             }
 
             if (renameActive) {
-                if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
-                    readFileName(buf, (name) -> {
-                        String[] oldNew = ((String) name).split("/");
-                        File oldFile = new File(currentDir + "/" + oldNew[0]);
-                        File newFile = new File(currentDir + "/" + oldNew[1]);
-                        if (oldFile.renameTo(newFile)) {
-                            sendServerFilesList(ctx);
-                            System.out.println("Файл на сервере переименован");
+                readFileName(buf, (name) -> {
+                    String[] oldNew = ((String) name).split("/");
+                    File oldFile = new File(currentDir + "/" + oldNew[0]);
+                    File newFile = new File(currentDir + "/" + oldNew[1]);
+                    if (oldFile.renameTo(newFile)) {
+                        sendServerFilesList(ctx);
+                        System.out.println("Файл на сервере переименован");
 
-                        } else {
-                            System.out.println("Ошибка при переименовании файла на сервере");
-                        }
+                    } else {
+                        System.out.println("Ошибка при переименовании файла на сервере");
+                    }
 
-                        renameActive = false;
-                        currentState = State.IDLE;
-                    });
-                }
+                    renameActive = false;
+                    currentState = State.IDLE;
+                });
             }
 
             if (authActive) {
@@ -210,7 +205,7 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     }
 
     private void confirmAuth(ChannelHandlerContext ctx, String nick) {
-        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
+        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(1 + 4 + nick.length());
         buf
                 .writeByte(Constants.AUTH)
                 .writeInt(nick.length())
