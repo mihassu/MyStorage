@@ -1,5 +1,6 @@
 package ru.mihassu.mystorage.server;
 
+import com.sun.xml.internal.bind.api.impl.NameConverter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
@@ -34,7 +35,6 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private boolean renameActive = false;
     private DbAuthService authService;
     private String currentNick;
-    private int currentUserId;
     private String currentDir;
 
     public ServerFileReceiverHandler(DbAuthService authService) {
@@ -59,22 +59,22 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                 System.out.println("ServerFileReceiverHandler - testByte: " + testByte);
                 if (testByte == Constants.UPLOAD_FILE) {
                     loadActive = true;
-                    currentState = State.ID;
+                    currentState = State.LOAD_FILE;
 
                 } else if (testByte == Constants.DOWNLOAD_FILE) {
                     downLoadActive = true;
-                    currentState = State.ID;
+                    currentState= State.NAME_LENGTH;
 
                 } else if (testByte == Constants.REQUEST_FILES_LIST) {
                     currentState = State.REQUEST_FILES_LIST;
 
                 } else if (testByte == Constants.DELETE_FILE) {
                     deleteActive = true;
-                    currentState = State.ID;
+                    currentState= State.NAME_LENGTH;
 
                 } else if (testByte == Constants.RENAME_FILE) {
                     renameActive = true;
-                    currentState = State.ID;
+                    currentState= State.NAME_LENGTH;
 
                 } else if (testByte == Constants.AUTH) {
                     authActive = true;
@@ -86,21 +86,12 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             }
 
             if (loadActive) {
-                if (currentState == State.ID) {
-                    if (buf.readableBytes() >= 4) {
-                        currentUserId = buf.readInt();
-                        currentNick = authService.getNicknameById(currentUserId);
-                        currentDir = Constants.serverDir + "/" + currentNick + "/"; // server-storage/userA/
-                        currentState = State.LOAD_FILE;
-                    }
-                }
-
                 if (currentState == State.LOAD_FILE) {
                     try {
                         FileReceiver.receiveFile(buf, currentDir, () -> {
                             loadActive = false;
                             currentState = State.IDLE;
-                            sendServerFilesList(ctx, currentNick);
+                            sendServerFilesList(ctx);
                             System.out.println("success() - сервер получил файл");
                         });
                     } catch (Exception e) {
@@ -112,15 +103,6 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             }
 
             if (downLoadActive) {
-                if (currentState == State.ID) {
-                    if (buf.readableBytes() >= 4) {
-                        currentUserId = buf.readInt();
-                        currentNick = authService.getNicknameById(currentUserId);
-                        currentDir = Constants.serverDir + "/" + currentNick; //server-storage/userA
-                        currentState = State.NAME_LENGTH;
-                    }
-                }
-
                 if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
                     readFileName(buf, (name) -> {
                         String fileDir = currentDir + "/" + name; //server-storage/userA/name.txt
@@ -132,22 +114,13 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             }
 
             if (deleteActive) {
-                if (currentState == State.ID) {
-                    if (buf.readableBytes() >= 4) {
-                        currentUserId = buf.readInt();
-                        currentNick = authService.getNicknameById(currentUserId);
-                        currentDir = Constants.serverDir + "/" + currentNick; //server-storage/userA
-                        currentState = State.NAME_LENGTH;
-                    }
-                }
-
                 if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
                     readFileName(buf, (name) -> {
                         try {
                             Files.delete(Paths.get(currentDir + "/" + name));
                             deleteActive = false;
                             currentState = State.IDLE;
-                            sendServerFilesList(ctx, currentNick);
+                            sendServerFilesList(ctx);
                             System.out.println("success() - файл на сервере удален");
                         } catch (IOException e) {
                             System.out.println("Ошибка при удалении файла с сервера: " + e.getMessage());
@@ -159,22 +132,13 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
             }
 
             if (renameActive) {
-                if (currentState == State.ID) {
-                    if (buf.readableBytes() >= 4) {
-                        currentUserId = buf.readInt();
-                        currentNick = authService.getNicknameById(currentUserId);
-                        currentDir = Constants.serverDir + "/" + currentNick; //server-storage/userA
-                        currentState = State.NAME_LENGTH;
-                    }
-                }
-
                 if (currentState == State.NAME_LENGTH || currentState == State.NAME) {
                     readFileName(buf, (name) -> {
                         String[] oldNew = ((String) name).split("/");
                         File oldFile = new File(currentDir + "/" + oldNew[0]);
                         File newFile = new File(currentDir + "/" + oldNew[1]);
                         if (oldFile.renameTo(newFile)) {
-                            sendServerFilesList(ctx, currentNick);
+                            sendServerFilesList(ctx);
                             System.out.println("Файл на сервере переименован");
 
                         } else {
@@ -193,9 +157,9 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     System.out.println("ServerFileReceiverHandler - логин: " + lp[0]);
                     System.out.println("ServerFileReceiverHandler - пароль: " + lp[1]);
                     currentNick = authService.getNicknameByLoginPass(lp[0], lp[1]);
-                    currentUserId = authService.getIdByLoginPass(lp[0], lp[1]);
+                    currentDir = Constants.serverDir + "/" + currentNick; //server-storage/userA
                     if (currentNick != null) {
-                        confirmAuth(ctx, currentNick, currentUserId);
+                        confirmAuth(ctx, currentNick);
                         createUserDirectory(currentNick);
 
                     } else {
@@ -208,12 +172,8 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
             //отправить список файлов на сервере
             if (currentState == State.REQUEST_FILES_LIST) {
-                if (buf.readableBytes() >= 4) {
-                    currentUserId = buf.readInt();
-                    currentNick = authService.getNicknameById(currentUserId);
-                    sendServerFilesList(ctx, currentNick);
-                    currentState = State.IDLE;
-                }
+                sendServerFilesList(ctx);
+                currentState = State.IDLE;
             }
         }
 
@@ -249,12 +209,13 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         ctx.close();
     }
 
-    private void confirmAuth(ChannelHandlerContext ctx, String nick, int userId) {
+    private void confirmAuth(ChannelHandlerContext ctx, String nick) {
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
-        sendTestByte(ctx, buf, Constants.AUTH);
-        sendInt(ctx, buf, nick.length());
-        sendBytes(ctx, buf, nick);
-        sendInt(ctx, buf, userId);
+        buf
+                .writeByte(Constants.AUTH)
+                .writeInt(nick.length())
+                .writeBytes(nick.getBytes(StandardCharsets.UTF_8));
+        ctx.channel().writeAndFlush(buf);
     }
 
     private void createUserDirectory(String userName) {
@@ -268,66 +229,50 @@ public class ServerFileReceiverHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    private void sendServerFilesList(ChannelHandlerContext ctx, String nick) {
+    private void sendServerFilesList(ChannelHandlerContext ctx) {
         serverFilesCount = 0;
         serverFileLength = 0;
-        List<Path> severFiles = getFilesList(nick);
+        List<Path> severFiles = getFilesList(currentNick);
         serverFilesCount = severFiles.size();
 
         ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer();
 
-        //отправить контрольный байт
-        sendTestByte(ctx, buf, Constants.REQUEST_FILES_LIST);
-
-        //отправить количество файлов
-        sendInt(ctx, buf, serverFilesCount);
+        buf = buf
+                .writeByte(Constants.REQUEST_FILES_LIST)
+                .writeInt(serverFilesCount);
 
         for (int i = 0; i < serverFilesCount; i++) {
 
-            //отправить длину имени файла
+            //длина имени файла
             serverFileLength = severFiles.get(i).toFile().getName().length();
             System.out.println("ServerFileReceiverHandler - Длина имени файла: " + serverFileLength);
-            sendInt(ctx, buf, serverFileLength);
 
-            //отправить имя файла
+            //имя файла
             fileName = severFiles.get(i).toFile().getName();
             System.out.println("ServerFileReceiverHandler - Имя файла: " + fileName);
-            sendBytes(ctx, buf, fileName);
 
-            //отправить размер файла
+            //размер файла
             try {
                 serverFileSize = Files.size(severFiles.get(i));
             } catch (IOException e) {
                 e.printStackTrace();
             }
             System.out.println("ServerFileReceiverHandler - Размер файла: " + serverFileSize);
-            buf = ByteBufAllocator.DEFAULT.directBuffer(8);
-            buf.writeLong(serverFileSize);
-            ctx.channel().writeAndFlush(buf);
-        }
-        System.out.println("ServerFileReceiverHandler - Передано количество файлов на сервере: " + serverFilesCount);
 
+            buf = buf
+                    .writeInt(serverFileLength)
+                    .writeBytes(fileName.getBytes(StandardCharsets.UTF_8))
+                    .writeLong(serverFileSize);
+        }
+
+        ctx.channel().writeAndFlush(buf);
+        System.out.println("ServerFileReceiverHandler - Передано количество файлов на сервере: " + serverFilesCount);
     }
 
     //отправить контольный байт
     public void sendTestByte(ChannelHandlerContext ctx, ByteBuf buf, byte testByte) {
         buf = ByteBufAllocator.DEFAULT.directBuffer(1);
         buf.writeByte(testByte);
-        ctx.channel().writeAndFlush(buf);
-    }
-
-    //отправить int
-    public void sendInt(ChannelHandlerContext ctx, ByteBuf buf, int nameLength) {
-        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
-        buf.writeInt(nameLength);
-        ctx.channel().writeAndFlush(buf);
-    }
-
-    //отправить bytes
-    private void sendBytes(ChannelHandlerContext ctx, ByteBuf buf, String name) {
-        byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
-        buf = ByteBufAllocator.DEFAULT.directBuffer(nameBytes.length);
-        buf.writeBytes(nameBytes);
         ctx.channel().writeAndFlush(buf);
     }
 

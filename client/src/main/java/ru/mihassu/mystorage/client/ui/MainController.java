@@ -29,7 +29,6 @@ public class MainController implements Initializable {
 
     private static Logger logger = Logger.getLogger(MainController.class.getName());
     private boolean authentificated;
-    private int userId;
 
     private TableView.TableViewSelectionModel<FileInfo> serverSelectionModel;
     private TableView.TableViewSelectionModel<FileInfo> clientSelectionModel;
@@ -53,7 +52,7 @@ public class MainController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setAuthentificated(false);
-        Network.getInstance().setCallOnAcceptData((serverFiles, nick, userId) -> {
+        Network.getInstance().setCallOnAcceptData((serverFiles, nick) -> {
             if (serverFiles == null && nick == null) {
                 System.out.println("Не удалось авторизоваться");
 
@@ -66,8 +65,7 @@ public class MainController implements Initializable {
                 initFilesTable(serverTableView);
                 initFilesTable(clientTableView);
                 nickField.setText(nick);
-                this.userId = userId;
-                Network.getInstance().getServerFiles(userId); //обновить списки на сервере и на клиенте
+                Network.getInstance().getServerFiles(); //обновить списки на сервере и на клиенте
                 initItemsSelectedListeners();
                 createClientDirectory();
                 System.out.println("Авторизация выполнена. Ник: " + nick);
@@ -129,7 +127,7 @@ public class MainController implements Initializable {
         if (fileNameField.getLength() > 0) {
             String[] path = fileNameField.getText().split("/");
             if (path[0].equals(Constants.clientDir)) {
-                Network.getInstance().sendFile(Paths.get(fileNameField.getText()), userId);
+                Network.getInstance().sendFile(Paths.get(fileNameField.getText()));
             } else {
                 showAlert("Выберите файл на клиенте");
             }
@@ -141,7 +139,7 @@ public class MainController implements Initializable {
         if (fileNameField.getText().length() > 0) {
             String[] path = fileNameField.getText().split("/");
             if (path[0].equals(Constants.serverDir)) {
-                Network.getInstance().downloadFile(path[1], userId);
+                Network.getInstance().downloadFile(path[1]);
             } else {
                 showAlert("Выберите файл на сервере");
             }
@@ -153,7 +151,7 @@ public class MainController implements Initializable {
         String[] path = fileNameField.getText().split("/");
         switch (path[0]) {
             case Constants.serverDir:
-                Network.getInstance().deleteServerFile(path[1], userId);
+                Network.getInstance().deleteServerFile(path[1]);
                 break;
             case Constants.clientDir:
                 try {
@@ -184,7 +182,7 @@ public class MainController implements Initializable {
                 String[] path = fileNameField.getText().split("/");
                 switch (path[0]) {
                     case Constants.serverDir:
-                        Network.getInstance().renameServerFile(path[1], (String) newFileName, userId);
+                        Network.getInstance().renameServerFile(path[1], (String) newFileName);
                         break;
                     case Constants.clientDir:
                         File file = new File(fileNameField.getText());
@@ -204,7 +202,7 @@ public class MainController implements Initializable {
 
 
     public void onPressRefreshBtn(ActionEvent actionEvent) {
-        Network.getInstance().getServerFiles(userId);
+        Network.getInstance().getServerFiles();
     }
 
     public void setAuthentificated(boolean authentificated) {

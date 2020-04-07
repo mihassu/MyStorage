@@ -8,6 +8,5 @@ public enum State {
     FILE,
     FILES_COUNT,
     REQUEST_FILES_LIST,
-    LOAD_FILE,
-    ID
+    LOAD_FILE
 }

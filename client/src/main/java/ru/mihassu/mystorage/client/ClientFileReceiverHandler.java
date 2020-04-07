@@ -21,12 +21,12 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
     private int userId;
     private List<FileInfo> serverFiles = new ArrayList<>();
     private HandlerOperationCallback callOnAcceptData;
-    private ProvideDataCallback fileReceived;
+    private OperationCompleteCallback fileReceived;
     private boolean loadActive = false;
     private boolean authActive = false;
     private boolean filesCountActive = false;
 
-    public ClientFileReceiverHandler(HandlerOperationCallback callOnAcceptData, ProvideDataCallback fileReceived) {
+    public ClientFileReceiverHandler(HandlerOperationCallback callOnAcceptData, OperationCompleteCallback fileReceived) {
         this.callOnAcceptData = callOnAcceptData;
         this.fileReceived = fileReceived;
     }
@@ -58,7 +58,7 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     currentState = State.NAME_LENGTH;
 
                 } else if (testByte == Constants.AUTH_FAIL) {
-                    callOnAcceptData.provideData(null, null, 0);
+                    callOnAcceptData.provideData(null, null);
 
                 } else {
                     System.out.println("ERROR: Invalid first byte - " + testByte);
@@ -71,7 +71,7 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     FileReceiver.receiveFile(buf, Constants.clientDir, () -> {
                         loadActive = false;
                         currentState = State.IDLE;
-                        fileReceived.provide(userId);
+                        fileReceived.success();
                         System.out.println("ClientFileReceiverHandler - клиент получил файл");
                     });
 
@@ -87,18 +87,21 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                     readFileName(buf, nick -> {
                         this.nick = (String) nick;
                         System.out.println("ClientFileReceiverHandler - получен ник от сервера: " + nick);
-                        currentState = State.ID;
+                        authActive = false;
+                        currentState = State.IDLE;
+                        callOnAcceptData.provideData(null, (String) nick);
+//                        currentState = State.ID;
                     });
                 }
 
-                if (currentState == State.ID) {
-                    if (buf.readableBytes() >= 4) {
-                        userId = buf.readInt();
-                        authActive = false;
-                        currentState = State.IDLE;
-                        callOnAcceptData.provideData(null, nick, userId);
-                    }
-                }
+//                if (currentState == State.ID) {
+//                    if (buf.readableBytes() >= 4) {
+//                        userId = buf.readInt();
+//                        authActive = false;
+//                        currentState = State.IDLE;
+//                        callOnAcceptData.provideData(null, nick, userId);
+//                    }
+//                }
             }
 
             if (filesCountActive) {
@@ -109,7 +112,7 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
                         currentState = State.NAME_LENGTH;
                         System.out.println("ClientFileReceiverHandler - Количество файлов нв сервере: " + filesCount);
                         if (filesCount == 0) {
-                            callOnAcceptData.provideData(serverFiles, null, 0);
+                            callOnAcceptData.provideData(serverFiles, null);
                             filesCountActive = false;
                             currentState = State.IDLE;
                         }
@@ -136,7 +139,7 @@ public class ClientFileReceiverHandler extends ChannelInboundHandlerAdapter {
 
                         if (receivedfiles >= filesCount) {
                             System.out.println("ClientFileReceiverHandler - Файлы на сервере: " + serverFiles.toString());
-                            callOnAcceptData.provideData(serverFiles, null, 0);
+                            callOnAcceptData.provideData(serverFiles, null);
                             filesCountActive = false;
                             currentState = State.IDLE;
                         }
