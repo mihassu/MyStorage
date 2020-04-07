@@ -65,6 +65,7 @@ public class Server {
         } finally {
             workGroup.shutdownGracefully();
             bossGroup.shutdownGracefully();
+            authService.disconnect();
             System.out.println("Server - finally()");
         }
     }

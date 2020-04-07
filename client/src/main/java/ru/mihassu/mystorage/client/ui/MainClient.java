@@ -15,8 +15,10 @@ public class MainClient extends Application {
     public void start(Stage primaryStage) throws Exception {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/main.fxml"));
         Parent root = fxmlLoader.load();
-        primaryStage.setTitle("My Storage");
         Scene scene = new Scene(root);
+        MainController controller = fxmlLoader.getController();
+        primaryStage.setOnCloseRequest(event -> controller.exitApp());
+        primaryStage.setTitle("My Storage");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -24,5 +26,4 @@ public class MainClient extends Application {
     public static void main(String[] args) {
         launch(args);
     }
-
 }

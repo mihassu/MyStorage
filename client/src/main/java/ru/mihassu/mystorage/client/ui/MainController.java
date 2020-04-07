@@ -257,6 +257,11 @@ public class MainController implements Initializable {
         alert.showAndWait();
     }
 
+    public void exitApp() {
+        Network.getInstance().stop();
+        Platform.exit();
+    }
+
     private void updateUI(Runnable r) {
         if (Platform.isFxApplicationThread()) {
             r.run();
