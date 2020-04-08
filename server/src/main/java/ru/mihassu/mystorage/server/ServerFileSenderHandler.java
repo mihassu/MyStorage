@@ -16,6 +16,11 @@ import java.nio.file.Paths;
 public class ServerFileSenderHandler extends ChannelInboundHandlerAdapter {
 
     private Path file;
+    private FileSender fileSender;
+
+    public ServerFileSenderHandler() {
+        this.fileSender = new FileSender();
+    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -29,7 +34,7 @@ public class ServerFileSenderHandler extends ChannelInboundHandlerAdapter {
             buf.writeByte(Constants.DOWNLOAD_FILE);
             ctx.channel().writeAndFlush(buf);
 
-            FileSender.sendFile(file, ctx.channel(), channelFuture -> {
+            fileSender.sendFile(file, ctx.channel(), channelFuture -> {
                 if (channelFuture.isSuccess()) {
                     System.out.println("Файл " + name + " отправлен клиенту");
                 } else {
@@ -37,30 +42,5 @@ public class ServerFileSenderHandler extends ChannelInboundHandlerAdapter {
                 }
             });
         }
-
-//        if (fileExist(name)) {
-//            file = Paths.get(Constants.serverDir + name);
-//            FileSender.sendFile(file, ctx.channel(), Constants.DOWNLOAD_FILE, channelFuture -> {
-//                if (channelFuture.isSuccess()) {
-//                    System.out.println("Файл " + name + " отправлен клиенту");
-//                } else {
-//                    channelFuture.cause().printStackTrace();
-//                }
-//            });
-//        }
-    }
-
-    private boolean fileExist(String fileName) {
-        return Files.exists(Paths.get(fileName));
-//        try {
-//            return Files.list(Paths.get(Constants.serverDir))
-//                    .map(Path::toFile)
-//                    .map(File::getName)
-//                    .anyMatch(name -> name.equals(fileName));
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        return false;
     }
 }
